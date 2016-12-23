@@ -3,10 +3,10 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"net/http"
 	"flag"
+	"fmt"
+	"net/http"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,7 +25,7 @@ var RootCmd = &cobra.Command{
 
 包括一些模块：
 gateway：网关。提供TCP, UDP和WebSocket等接入方式，与客户端
-         建立稳定的双向链接。
+         建立稳定的双向连接。
 maintain：网控。实时监控集群各个服务的状态`,
 }
 
@@ -58,9 +58,9 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	}
 
-	viper.SetConfigName(".zim") // name of config file (without extension)
-	viper.AddConfigPath("$HOME")  // adding home directory as first search path
-	viper.AutomaticEnv()          // read in environment variables that match
+	viper.SetConfigName(".zim")  // name of config file (without extension)
+	viper.AddConfigPath("$HOME") // adding home directory as first search path
+	viper.AutomaticEnv()         // read in environment variables that match
 
 	if cfgVerbose {
 		flag.Set("v", "4")
