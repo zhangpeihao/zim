@@ -5,13 +5,13 @@ package util
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"os"
 	"os/signal"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
-	"github.com/pkg/errors"
 )
 
 var (

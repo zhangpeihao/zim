@@ -124,5 +124,6 @@ FOR_LOOP:
 		}
 		srv.serverHandler.OnReceivedCommand(conn, cmd)
 	}
+	glog.Infoln("websocket::Server::Handle() ", conn, " closed")
 	srv.serverHandler.OnCloseConnection(conn)
 }

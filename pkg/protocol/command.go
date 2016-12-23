@@ -4,26 +4,26 @@ package protocol
 
 const (
 	// Login 登入
-	Login             = "login"
+	Login = "login"
 	// Close 关闭
-	Close             = "close"
+	Close = "close"
 	// Message 消息
-	Message           = "msg"
+	Message = "msg"
 	// HeartBeat 心跳
-	HeartBeat         = "hb"
+	HeartBeat = "hb"
 	// HeartBeatResponse 心跳响应
 	HeartBeatResponse = "hbr"
 )
 
 const (
 	// CommandNameLine 命令名行索引
-	CommandNameLine    = 0
+	CommandNameLine = 0
 	// CommandDataLine 命令数据行索引
-	CommandDataLine    = 1
+	CommandDataLine = 1
 	// CommandPayloadLine 命令负载行索引
 	CommandPayloadLine = 2
 	// CommandLines 命令行数
-	CommandLines       = 3
+	CommandLines = 3
 )
 
 var (

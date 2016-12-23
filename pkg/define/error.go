@@ -6,7 +6,7 @@ import "errors"
 
 var (
 	// ErrConnectionClosed 连接已关闭
-	ErrConnectionClosed  = errors.New("connection closed")
+	ErrConnectionClosed = errors.New("connection closed")
 	// ErrUnsupportProtocol 协议不支持
 	ErrUnsupportProtocol = errors.New("unsupport protocol")
 )
