@@ -17,6 +17,7 @@ var (
 	cfgWebSocketBindAddress string
 	cfgPushBindAddress      string
 	cfgKey                  string
+	cfgRouterJSON           string
 )
 
 // gatewayCmd gateway命令
@@ -39,8 +40,10 @@ var gatewayCmd = &cobra.Command{
 		gatewaySrv, err = gateway.NewServer(&gateway.ServerParameter{
 			ServerParameter: websocket.ServerParameter{
 				WebSocketBindAddress: cfgWebSocketBindAddress,
+				Debug:                cfgDebug,
 			},
 			Key: protocol.Key(cfgKey),
+			JSONRouteFile:        cfgRouterJSON,
 		})
 		if err != nil {
 			glog.Errorln("Gateway.NewServer() error:", err)
@@ -69,5 +72,6 @@ func init() {
 	gatewayCmd.PersistentFlags().StringVar(&cfgWebSocketBindAddress, "ws-bind", ":8870", "WebSocket服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgPushBindAddress, "push-bind", ":8871", "推送服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgKey, "key", "1234567890", "客户端Token验证密钥")
+	gatewayCmd.PersistentFlags().StringVar(&cfgRouterJSON, "router-json", "", "JSON router file.")
 
 }

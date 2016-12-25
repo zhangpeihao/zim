@@ -89,7 +89,7 @@ func (sc *SafeCloser) Done(name string) error {
 
 // WaitAndClose 开始安全退出
 func (sc *SafeCloser) WaitAndClose(timeout time.Duration, fn CloseFunc) error {
-	atomic.StoreInt32(&sc.closeFlag, 1)
+	glog.Infof("util::SafeClose::WaitAndClose()\n")
 	sc.terminationSignalsCh = make(chan os.Signal, 1)
 	signal.Notify(sc.terminationSignalsCh, terminationSignals...)
 	defer func() {
@@ -97,6 +97,7 @@ func (sc *SafeCloser) WaitAndClose(timeout time.Duration, fn CloseFunc) error {
 		close(sc.terminationSignalsCh)
 	}()
 	<-sc.terminationSignalsCh
+	atomic.StoreInt32(&sc.closeFlag, 1)
 	fn()
 
 	return sc.Close(timeout)
@@ -104,6 +105,7 @@ func (sc *SafeCloser) WaitAndClose(timeout time.Duration, fn CloseFunc) error {
 
 // Close 开始安全退出
 func (sc *SafeCloser) Close(timeout time.Duration) (err error) {
+	glog.Infof("util::SafeClose::Close()\n")
 	atomic.StoreInt32(&sc.closeFlag, 1)
 	// 异步向所有控制项发送退出指令
 	go func() {

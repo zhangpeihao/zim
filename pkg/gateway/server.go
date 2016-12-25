@@ -6,6 +6,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/router"
+	"github.com/zhangpeihao/zim/pkg/router/driver/jsonfile"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
 	"sync"
@@ -22,16 +24,24 @@ type ServerParameter struct {
 	websocket.ServerParameter
 	// Key 验证密钥
 	Key protocol.Key
+	// Route config JSON file
+	JSONRouteFile string
 }
 
 // Server 网关服务
 type Server struct {
 	// ServerParameter 服务参数
 	ServerParameter
+	// 安全退出
 	closer *util.SafeCloser
+	// 锁
 	sync.Mutex
-	wsServer    define.SubServer
+	// WebSocket服务
+	wsServer define.SubServer
+	// 连接Map
 	connections map[define.Connection]struct{}
+	// 路由
+	router router.Router
 }
 
 // NewServer 新建服务
@@ -41,9 +51,8 @@ func NewServer(params *ServerParameter) (srv *Server, err error) {
 		ServerParameter: *params,
 		connections:     make(map[define.Connection]struct{}),
 	}
-	srv.wsServer, err = websocket.NewServer(&websocket.ServerParameter{
-		WebSocketBindAddress: srv.WebSocketBindAddress,
-	}, srv)
+	srv.router, err = jsonfile.NewRouter(srv.JSONRouteFile)
+	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.ServerParameter, srv)
 	return
 }
 
@@ -102,4 +111,31 @@ func (srv *Server) OnCloseConnection(conn define.Connection) {
 // OnReceivedCommand 收到命令
 func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.Command) {
 	glog.Infof("gateway::Server::OnReceivedCommand() command %s from %s\n", command.Name, conn)
+	// 检查登入
+	if !conn.IsLogin() && command.Name != protocol.Login {
+		glog.Warningln("gateway::Server::OnReceivedCommand() first command must be login! got:",
+			command.Name)
+		conn.Close(false)
+		return
+	}
+
+	// Route
+	ink := srv.router.Find(command.Name)
+
+	if ink == nil {
+		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
+		return
+	}
+
+	resp, err := ink.Invoke(command)
+	if err != nil {
+		glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
+			command.Name, err)
+		return
+	}
+
+	glog.Infof("gateway::Server::OnReceivedCommand() invoke(%s) response %s",
+		command.Name, resp)
+
+	return
 }

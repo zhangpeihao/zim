@@ -62,6 +62,7 @@ func TestServer(t *testing.T) {
 	defer client.Close()
 
 	buf := new(bytes.Buffer)
+	buf.WriteString("t1\n")
 	buf.WriteString(protocol.Login)
 	buf.WriteByte('\n')
 	login := protocol.GatewayLoginCommand{

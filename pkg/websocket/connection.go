@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
 )
 
 var (
@@ -24,7 +25,8 @@ var (
 
 // Connection 连接
 type Connection struct {
-	c *websocket.Conn
+	login bool
+	c     *websocket.Conn
 }
 
 // NewConnection 新建连接
@@ -52,18 +54,30 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 	case websocket.PongMessage:
 		cmd = HeartBeatResponseCommand
 	case websocket.TextMessage:
-		lines := bytes.SplitN(message, protocol.CommandSep, protocol.CommandLines)
-		if len(lines) != protocol.CommandLines {
+		if message == nil || len(message) == 0 {
+			glog.Warningln("websocket::connection::Run() message unsupport\n")
+			err = define.ErrUnsupportProtocol
+			break
+		}
+		switch message[0] {
+		case 't':
+		default:
+			glog.Warningln("websocket::connection::Run() message type[%s] unsupport\n", string(message[0]))
+			err = define.ErrUnsupportProtocol
+		}
+		lines := bytes.SplitN(message, plaintext.CommandSep, plaintext.CommandLines)
+		if len(lines) != plaintext.CommandLines {
 			glog.Warningln("websocket::connection::Run() message has %s lines\n", len(lines))
 			err = protocol.ErrParseFailed
 			break
 		}
 		cmd = &protocol.Command{
-			Name: string(lines[protocol.CommandNameLine]),
+			Version: string(lines[plaintext.CommandVersionLine]),
+			Name:    string(lines[plaintext.CommandNameLine]),
 		}
-		data := lines[protocol.CommandDataLine]
-		cmd.Payload = string(lines[protocol.CommandPayloadLine])
-		switch cmd.Name {
+		data := lines[plaintext.CommandDataLine]
+		cmd.Payload = lines[plaintext.CommandPayloadLine]
+		switch cmd.FirstPartName() {
 		case protocol.Login:
 			var loginCmd protocol.GatewayLoginCommand
 			if err = json.Unmarshal(data, &loginCmd); err != nil {
@@ -87,7 +101,7 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 			cmd.Data = &msgCmd
 		}
 	}
-	return cmd, nil
+	return cmd, err
 }
 
 // Close 关闭链接（define::Connection接口函数）
@@ -98,4 +112,14 @@ func (conn *Connection) Close(force bool) error {
 // ToString 字符串输出（define::Connection接口函数）
 func (conn *Connection) String() string {
 	return "webdocket[" + conn.c.RemoteAddr().String() + "]"
+}
+
+// LoginSuccess 登入成功
+func (conn *Connection) LoginSuccess() {
+	conn.login = true
+}
+
+// IsLogin 登入状态
+func (conn *Connection) IsLogin() bool {
+	return conn.login
 }

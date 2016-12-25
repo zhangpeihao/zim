@@ -8,8 +8,10 @@ import (
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
+	"html/template"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -22,6 +24,8 @@ const (
 type ServerParameter struct {
 	// WebSocketBindAddress WebSocket服务绑定地址
 	WebSocketBindAddress string
+	// Debug 调试模式
+	Debug bool
 }
 
 // Server WebSocket服务
@@ -36,6 +40,8 @@ type Server struct {
 	upgrader *websocket.Upgrader
 	// listener HTTP侦听对象
 	listener net.Listener
+	// httpServer HTTP服务
+	httpServer *http.Server
 }
 
 // NewServer 新建一个WebSocket服务实例
@@ -49,6 +55,10 @@ func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv
 			WriteBufferSize: 1024,
 		},
 	}
+	if srv.Debug {
+		glog.Warningln("Websocket in debug mode!!!")
+	}
+	srv.httpServer = &http.Server{Handler: srv}
 
 	return srv, err
 }
@@ -57,7 +67,6 @@ func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv
 func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 	glog.Infoln("websocket::Server::Run()")
 	srv.closer = closer
-	http.HandleFunc("/ws", srv.Handle)
 	srv.listener, err = net.Listen("tcp4", srv.WebSocketBindAddress)
 	if err != nil {
 		glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
@@ -66,7 +75,7 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 	}
 	var httpErr error
 	go func() {
-		httpErr = http.Serve(srv.listener, nil)
+		httpErr = srv.httpServer.Serve(srv.listener)
 	}()
 	time.Sleep(time.Second)
 	if httpErr != nil {
@@ -94,11 +103,33 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 }
 
 // Handle 处理HTTP链接
-func (srv *Server) Handle(w http.ResponseWriter, r *http.Request) {
-	glog.Infoln("websocket::Server::Handle()")
+func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	glog.Infoln("websocket::Server::ServeHTTP()")
 	if srv.closer.IsClose() {
+		glog.Warningln("websocket::Server::ServeHTTP() URL: ", r.URL.Path, ", Closed")
 		return
 	}
+	route := strings.ToLower(strings.Trim(r.URL.Path, "/"))
+	glog.Infoln("websocket::Server::ServeHTTP() route: ", route)
+	switch route {
+	case "ws":
+		srv.HandleWebSocket(w, r)
+	case "debug":
+		if srv.Debug {
+			srv.HandleDebug(w, r)
+		} else {
+			glog.Warningln("websocket::Server::ServeHTTP() not in debug mode")
+			w.WriteHeader(404)
+		}
+	default:
+		glog.Warningln("websocket::Server::ServeHTTP() unknow URL: ", r.URL.Path)
+		w.WriteHeader(404)
+	}
+}
+
+// HandleWebSocket 处理HTTP链接
+func (srv *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	glog.Infoln("websocket::Server::HandleWebSocket()")
 	// Upgrade到WebSocket连接
 	c, err := srv.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -127,3 +158,95 @@ FOR_LOOP:
 	glog.Infoln("websocket::Server::Handle() ", conn, " closed")
 	srv.serverHandler.OnCloseConnection(conn)
 }
+
+// HandleDebug 处理HTTP链接
+func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
+	glog.Infoln("websocket::Server::HandleDebug()")
+	if srv.closer.IsClose() {
+		w.WriteHeader(500)
+		return
+	}
+	strs := strings.Split(srv.WebSocketBindAddress, ":")
+	if len(strs) != 2 {
+		w.WriteHeader(500)
+		return
+	}
+	homeTemplate.Execute(w, "ws://localhost:"+strs[1]+"/ws")
+}
+
+var homeTemplate = template.Must(template.New("").Parse(`
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<script>
+window.addEventListener("load", function(evt) {
+    var output = document.getElementById("output");
+    var input = document.getElementById("input");
+    var ws;
+    var print = function(message) {
+        var d = document.createElement("div");
+        d.innerHTML = message;
+        output.appendChild(d);
+    };
+    document.getElementById("open").onclick = function(evt) {
+        if (ws) {
+            return false;
+        }
+        ws = new WebSocket("{{.}}");
+        ws.onopen = function(evt) {
+            print("OPEN");
+        }
+        ws.onclose = function(evt) {
+            print("CLOSE");
+            ws = null;
+        }
+        ws.onmessage = function(evt) {
+            print("RESPONSE: " + evt.data);
+        }
+        ws.onerror = function(evt) {
+            print("ERROR: " + evt.data);
+        }
+        return false;
+    };
+    document.getElementById("send").onclick = function(evt) {
+        if (!ws) {
+            return false;
+        }
+        print("SEND: " + input.value);
+        ws.send(input.value);
+        return false;
+    };
+    document.getElementById("close").onclick = function(evt) {
+        if (!ws) {
+            return false;
+        }
+        ws.close();
+        return false;
+    };
+});
+</script>
+</head>
+<body>
+<table>
+<tr><td valign="top" width="50%">
+<p>点击"连接"按钮建立WebSocket连接
+<p>点击"关闭"按钮断开连接
+<p>在文本框中输入信令内容，点击"发送"按钮，发送信令
+<p>
+<form>
+<button id="open">连接</button>
+<button id="close">关闭</button>
+<p>
+<textarea id="input" rows="5" cols="50"/>
+login
+{"id":"","timestamp":,"token":""}
+payload
+</textarea>
+<button id="send">Send</button>
+</form>
+</td><td valign="top" width="50%">
+<div id="output"></div>
+</td></tr></table>
+</body>
+</html>
+`))
