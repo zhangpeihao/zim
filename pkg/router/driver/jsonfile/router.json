@@ -1,4 +1,12 @@
 {
-  "msg": {"protocol":"httpapi","parameter":"http://test/im"},
-  "login": {"protocol":"httpapi","parameter":"http://test/im"}
+  "test": {
+    "msg": {
+      "protocol": "httpapi",
+      "parameter": "http://test/im"
+    },
+    "login": {
+      "protocol": "httpapi",
+      "parameter": "http://test/im"
+    }
+  }
 }

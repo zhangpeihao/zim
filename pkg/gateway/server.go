@@ -6,6 +6,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/push"
+	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
 	"github.com/zhangpeihao/zim/pkg/router"
 	"github.com/zhangpeihao/zim/pkg/router/driver/jsonfile"
 	"github.com/zhangpeihao/zim/pkg/util"
@@ -22,6 +24,7 @@ const (
 // ServerParameter 网关服务参数
 type ServerParameter struct {
 	websocket.ServerParameter
+	httpserver.Parameter
 	// Key 验证密钥
 	Key protocol.Key
 	// Route config JSON file
@@ -32,16 +35,18 @@ type ServerParameter struct {
 type Server struct {
 	// ServerParameter 服务参数
 	ServerParameter
-	// 安全退出
+	// closer 安全退出
 	closer *util.SafeCloser
 	// 锁
 	sync.Mutex
-	// WebSocket服务
+	// wsServer WebSocket服务
 	wsServer define.SubServer
-	// 连接Map
+	// connections 连接Map
 	connections map[define.Connection]struct{}
-	// 路由
+	// router 路由
 	router router.Router
+	// pushServer Push服务
+	pushServer *httpserver.Server
 }
 
 // NewServer 新建服务
@@ -52,7 +57,17 @@ func NewServer(params *ServerParameter) (srv *Server, err error) {
 		connections:     make(map[define.Connection]struct{}),
 	}
 	srv.router, err = jsonfile.NewRouter(srv.JSONRouteFile)
+	if err != nil {
+		return nil, err
+	}
 	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.ServerParameter, srv)
+	if err != nil {
+		return nil, err
+	}
+	srv.pushServer, err = httpserver.NewServer(&srv.ServerParameter.Parameter, srv)
+	if err != nil {
+		return nil, err
+	}
 	return
 }
 
@@ -120,7 +135,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 	}
 
 	// Route
-	ink := srv.router.Find(command.Name)
+	ink := srv.router.Find(command.AppID, command.Name)
 
 	if ink == nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
@@ -138,4 +153,10 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		command.Name, resp)
 
 	return
+}
+
+// OnPushToUser 推送消息给用户
+func (srv *Server) OnPushToUser(data *push.Message) {
+	glog.Infof("gateway::Server::OnPushToUser()\n")
+
 }

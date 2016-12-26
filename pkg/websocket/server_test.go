@@ -40,7 +40,6 @@ func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *p
 }
 
 func TestServer(t *testing.T) {
-	t.Log("Start server")
 	handler := new(TestHandler)
 	s, err := NewServer(&ServerParameter{
 		WebSocketBindAddress: ":12343",
@@ -63,11 +62,12 @@ func TestServer(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	buf.WriteString("t1\n")
+	buf.WriteString("test\n")
 	buf.WriteString(protocol.Login)
 	buf.WriteByte('\n')
 	login := protocol.GatewayLoginCommand{
 		GatewayCommonCommand: protocol.GatewayCommonCommand{
-			ID:        "123",
+			UserID:    "123",
 			Timestamp: time.Now().Unix(),
 		},
 	}
@@ -99,8 +99,8 @@ func TestServer(t *testing.T) {
 		if obj, ok := handler.lastCommand.Data.(*protocol.GatewayLoginCommand); !ok {
 			t.Fatal("Data type error")
 		} else {
-			if obj.ID != login.ID {
-				t.Errorf("Expect: %s\nGot: %s\n", login.ID, obj.ID)
+			if obj.UserID != login.UserID {
+				t.Errorf("Expect: %s\nGot: %s\n", login.UserID, obj.UserID)
 			}
 			if obj.Timestamp != login.Timestamp {
 				t.Errorf("Expect: %d\nGot: %d\n", login.Timestamp, obj.Timestamp)

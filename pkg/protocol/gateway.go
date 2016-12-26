@@ -9,8 +9,8 @@ import (
 
 // GatewayCommonCommand 网关通用信令
 type GatewayCommonCommand struct {
-	// ID 用户ID
-	ID string `json:"id"`
+	// UserID 用户ID
+	UserID string `json:"id"`
 	// Timestamp Unix时间戳（单位秒）
 	Timestamp int64 `json:"timestamp"`
 	// Token 认证字
@@ -41,7 +41,7 @@ type Key []byte
 // Token 取得Token
 func (key Key) Token(cmd *GatewayCommonCommand) string {
 	h := md5.New()
-	h.Write([]byte(cmd.ID))
+	h.Write([]byte(cmd.UserID))
 	h.Write([]byte(fmt.Sprintf("%d", cmd.Timestamp)))
 	h.Write(key)
 	return fmt.Sprintf("%X", h.Sum(nil))

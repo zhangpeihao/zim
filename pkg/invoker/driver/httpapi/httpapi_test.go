@@ -34,23 +34,28 @@ func init() {
 func TestInvoker(t *testing.T) {
 	testCases := []TestInvokerCase{
 		{"POST", 200, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), `t1
+test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
 bar`, false},
 		{"POST", 200, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), `T1
+test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
 bar`, true},
 		{"POST", 200, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), ``, true},
 		{"POST", 400, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), `t1
+test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
 bar`, true},
 		{"GET", 200, "xxxx://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), `t1
+test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
 bar`, true},
 		{"POST", 200, "%gh&%ij", "msg/foo/bar", []byte("foo"), `t1
+test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
 bar`, true},

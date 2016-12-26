@@ -1,12 +1,12 @@
 // Copyright 2016 Zhang Peihao <zhangpeihao@gmail.com>
 
-package websocket
+package httpserver
 
 import (
 	"github.com/golang/glog"
-	"github.com/gorilla/websocket"
-	"github.com/zhangpeihao/zim/pkg/define"
-	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/push"
+	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"html/template"
 	"net"
@@ -17,60 +17,54 @@ import (
 
 const (
 	// ServerName 服务名
-	ServerName = "websocket"
+	ServerName = "push-httpserver"
 )
 
-// ServerParameter WebSocket服务构造参数
-type ServerParameter struct {
-	// WebSocketBindAddress WebSocket服务绑定地址
-	WebSocketBindAddress string
+// Parameter 参数
+type Parameter struct {
+	// BindAddress 绑定地址
+	BindAddress string
 	// Debug 调试模式
 	Debug bool
 }
 
-// Server WebSocket服务
+// Server 推送服务
 type Server struct {
-	// ServerParameter WebSocket服务构造参数
-	ServerParameter
-	// serverHandler Server回调
-	serverHandler define.ServerHandler
+	// Parameter 参数
+	Parameter
+	// handler 回调接口
+	handler push.Handler
 	// closer 安全退出锁
 	closer *util.SafeCloser
-	// upgrader upgrader WebSocket upgrade参数
-	upgrader *websocket.Upgrader
 	// listener HTTP侦听对象
 	listener net.Listener
 	// httpServer HTTP服务
 	httpServer *http.Server
 }
 
-// NewServer 新建一个WebSocket服务实例
-func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv *Server, err error) {
-	glog.Infoln("websocket::NewServer")
+// NewServer 新建服务
+func NewServer(params *Parameter, handler push.Handler) (srv *Server, err error) {
+	glog.Infoln("push::driver::httpserver::NewServer")
 	srv = &Server{
-		ServerParameter: *params,
-		serverHandler:   serverHandler,
-		upgrader: &websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-		},
-	}
-	if srv.Debug {
-		glog.Warningln("Websocket in debug mode!!!")
+		Parameter: *params,
+		handler:   handler,
 	}
 	srv.httpServer = &http.Server{Handler: srv}
+	if srv.Debug {
+		glog.Warningln("push server in debug mode!!!")
+	}
 
 	return srv, err
 }
 
 // Run 启动WebSocket服务
 func (srv *Server) Run(closer *util.SafeCloser) (err error) {
-	glog.Infoln("websocket::Server::Run()")
+	glog.Infoln("push::driver::httpserver::Server::Run()")
 	srv.closer = closer
-	srv.listener, err = net.Listen("tcp4", srv.WebSocketBindAddress)
+	srv.listener, err = net.Listen("tcp4", srv.BindAddress)
 	if err != nil {
-		glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
-			srv.WebSocketBindAddress, err)
+		glog.Errorf("push::driver::httpserver::Server::Run() listen(%s) error: %s\n",
+			srv.BindAddress, err)
 		return
 	}
 	var httpErr error
@@ -79,12 +73,12 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 	}()
 	time.Sleep(time.Second)
 	if httpErr != nil {
-		glog.Errorf("websocket::Server::Run() http.Server(%s) error: %s\n",
-			srv.WebSocketBindAddress, err)
+		glog.Errorf("push::driver::httpserver::Server::Run() http.Server(%s) error: %s\n",
+			srv.BindAddress, err)
 		return httpErr
 	}
 	err = srv.closer.Add(ServerName, func() {
-		glog.Warningln("websocket::Server::Run() to close")
+		glog.Warningln("push::driver::httpserver::Server::Run() to close")
 		srv.listener.Close()
 	})
 
@@ -93,7 +87,7 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 
 // Close 退出
 func (srv *Server) Close(timeout time.Duration) (err error) {
-	glog.Infoln("websocket::Server::Close()")
+	glog.Infoln("push::driver::httpserver::Server::Close()")
 	defer srv.closer.Done(ServerName)
 	// 关闭HTTP服务
 	if srv.listener != nil {
@@ -104,69 +98,69 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 
 // Handle 处理HTTP链接
 func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	glog.Infoln("websocket::Server::ServeHTTP()")
+	glog.Infoln("push::driver::httpserver::Server::ServeHTTP()")
 	if srv.closer.IsClose() {
-		glog.Warningln("websocket::Server::ServeHTTP() URL: ", r.URL.Path, ", Closed")
+		glog.Warningln("push::driver::httpserver::Server::ServeHTTP() URL: ", r.URL.Path, ", Closed")
 		return
 	}
 	route := strings.ToLower(strings.Trim(r.URL.Path, "/"))
-	glog.Infoln("websocket::Server::ServeHTTP() route: ", route)
+	glog.Infoln("push::driver::httpserver::Server::ServeHTTP() route: ", route)
 	switch route {
-	case "ws":
-		srv.HandleWebSocket(w, r)
+	case "p2u":
+		srv.HandlePush2User(w, r)
 	case "debug":
 		if srv.Debug {
 			srv.HandleDebug(w, r)
 		} else {
-			glog.Warningln("websocket::Server::ServeHTTP() not in debug mode")
+			glog.Warningln("push::driver::httpserver::Server::ServeHTTP() not in debug mode")
 			w.WriteHeader(404)
 		}
 	default:
-		glog.Warningln("websocket::Server::ServeHTTP() unknow URL: ", r.URL.Path)
+		glog.Warningln("push::driver::httpserver::Server::ServeHTTP() unknow URL: ", r.URL.Path)
 		w.WriteHeader(404)
 	}
 }
 
-// HandleWebSocket 处理HTTP链接
-func (srv *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	glog.Infoln("websocket::Server::HandleWebSocket()")
-	// Upgrade到WebSocket连接
-	c, err := srv.upgrader.Upgrade(w, r, nil)
+// HandlePush2User 处理HTTP链接
+func (srv *Server) HandlePush2User(w http.ResponseWriter, r *http.Request) {
+	glog.Infoln("push::driver::httpserver::Server::HandlePush2User()")
+
+	cmd, err := plaintext.ParseReader(r.Body)
 	if err != nil {
-		glog.Errorf("websocket::Server::Handle() upgrade error: %s\n", err)
+		glog.Warningln("push::driver::httpserver::Server::HandlePush2User() ParseReader error: ", err)
+		w.WriteHeader(500)
 		return
 	}
 
-	// 新建连接
-	conn := NewConnection(c)
-	srv.serverHandler.OnNewConnection(conn)
-
-	var cmd *protocol.Command
-FOR_LOOP:
-	for !srv.closer.IsClose() {
-		// 读取Command
-		cmd, err = conn.ReadCommand()
-		if err != nil {
-			if err == define.ErrConnectionClosed {
-				glog.Infoln("websocket::Server::Handle() connection to close")
-				conn.Close(false)
-			}
-			break FOR_LOOP
-		}
-		srv.serverHandler.OnReceivedCommand(conn, cmd)
+	var (
+		pushCmd *protocol.Push2UserCommand
+		ok      bool
+	)
+	pushCmd, ok = cmd.Data.(*protocol.Push2UserCommand)
+	if !ok {
+		glog.Warningln("push::driver::httpserver::Server::HandlePush2User() parse result error")
+		w.WriteHeader(500)
+		return
 	}
-	glog.Infoln("websocket::Server::Handle() ", conn, " closed")
-	srv.serverHandler.OnCloseConnection(conn)
+
+	data := &push.Message{
+		AppID:       cmd.AppID,
+		UserID:      pushCmd.UserID,
+		CommandName: cmd.Name,
+		Payload:     cmd.Payload,
+	}
+	srv.handler.OnPushToUser(data)
+	w.WriteHeader(200)
 }
 
 // HandleDebug 处理HTTP链接
 func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
-	glog.Infoln("websocket::Server::HandleDebug()")
+	glog.Infoln("push::driver::httpserver::Server::HandleDebug()")
 	if srv.closer.IsClose() {
 		w.WriteHeader(500)
 		return
 	}
-	strs := strings.Split(srv.WebSocketBindAddress, ":")
+	strs := strings.Split(srv.BindAddress, ":")
 	if len(strs) != 2 {
 		w.WriteHeader(500)
 		return

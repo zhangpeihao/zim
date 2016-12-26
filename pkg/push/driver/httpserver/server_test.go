@@ -1,0 +1,61 @@
+// Copyright 2016 Zhang Peihao <zhangpeihao@gmail.com>
+
+package httpserver
+
+import (
+	"bytes"
+	"flag"
+	"github.com/zhangpeihao/zim/pkg/push"
+	"github.com/zhangpeihao/zim/pkg/util"
+	"net/http"
+	"testing"
+	"time"
+)
+
+func init() {
+	flag.Set("v", "4")
+	flag.Set("logtostderr", "true")
+}
+
+type TestHandler struct {
+	data *push.Message
+}
+
+// OnPushToUser 推送消息给用户
+func (handler *TestHandler) OnPushToUser(data *push.Message) {
+	handler.data = data
+}
+
+func TestServer(t *testing.T) {
+	handler := new(TestHandler)
+	s, err := NewServer(&Parameter{
+		BindAddress: ":12343",
+	}, handler)
+	if err != nil {
+		t.Fatal("NewServer error:", err)
+	}
+
+	closer := util.NewSafeCloser()
+	if err = s.Run(closer); err != nil {
+		t.Fatal("Run error:", err)
+	}
+
+	resp, err := http.Post("http://localhost:12343/p2u", "text/plain", bytes.NewBufferString(`t1
+test
+p2u
+{"appid":"","userid":"","timestamp":0,"token":""}
+foo bar`))
+	if err != nil {
+		t.Fatal("http.Post error: ", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("http.Post response status: %d\n", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	s.Close(time.Second)
+	if err = closer.Close(time.Second); err != nil {
+		t.Error("Close error:", err)
+	}
+
+}

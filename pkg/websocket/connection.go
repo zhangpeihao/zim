@@ -123,3 +123,8 @@ func (conn *Connection) LoginSuccess() {
 func (conn *Connection) IsLogin() bool {
 	return conn.login
 }
+
+// Send 发送命令
+func (conn *Connection) Send(cmd *protocol.Command) error {
+	return conn.c.WriteMessage(websocket.TextMessage, plaintext.Compose(cmd))
+}
