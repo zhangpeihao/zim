@@ -1,5 +1,6 @@
 zim
 /test
+/release
 
 # OSX leaves these everywhere on SMB shares
 ._*
