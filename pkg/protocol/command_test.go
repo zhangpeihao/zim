@@ -47,12 +47,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
@@ -62,12 +64,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				nil,
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				nil,
 				[]byte("foo bar"),
@@ -77,12 +81,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t2",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
@@ -92,12 +98,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
@@ -107,12 +115,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayCloseCommand{},
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
@@ -122,12 +132,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("bar"),
@@ -137,12 +149,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				nil,
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&GatewayMessageCommand{},
 				[]byte("foo bar"),
@@ -152,12 +166,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				make(chan string),
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				make(chan string),
 				[]byte("foo bar"),
@@ -167,12 +183,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&JSONError{make(chan string)},
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&JSONError{&GatewayMessageCommand{}},
 				[]byte("foo bar"),
@@ -182,12 +200,14 @@ func TestEqual(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&JSONError{&GatewayMessageCommand{}},
 				[]byte("foo bar"),
 			},
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				&JSONError{make(chan string)},
 				[]byte("foo bar"),
@@ -235,6 +255,7 @@ func TestString(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				nil,
 				[]byte("foo bar"),
@@ -242,6 +263,7 @@ func TestString(t *testing.T) {
 			`
 {
   Version: t1
+  AppID: test
   Name: msg/foo/bar
   Data: nil
   Payload: [102 111 111 32 98 97 114]
@@ -251,6 +273,7 @@ func TestString(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				make(chan string),
 				[]byte("foo bar"),
@@ -258,6 +281,7 @@ func TestString(t *testing.T) {
 			`
 {
   Version: t1
+  AppID: test
   Name: msg/foo/bar
   Data: ERROR
   Payload: [102 111 111 32 98 97 114]
@@ -267,6 +291,7 @@ func TestString(t *testing.T) {
 		{
 			&Command{
 				"t1",
+				"test",
 				"msg/foo/bar",
 				"data",
 				[]byte("foo bar"),
@@ -274,6 +299,7 @@ func TestString(t *testing.T) {
 			`
 {
   Version: t1
+  AppID: test
   Name: msg/foo/bar
   Data: "data"
   Payload: [102 111 111 32 98 97 114]

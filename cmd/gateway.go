@@ -11,6 +11,7 @@ import (
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
 	"time"
+	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
 )
 
 var (
@@ -41,6 +42,10 @@ var gatewayCmd = &cobra.Command{
 			ServerParameter: websocket.ServerParameter{
 				WebSocketBindAddress: cfgWebSocketBindAddress,
 				Debug:                cfgDebug,
+			},
+			Parameter: httpserver.Parameter{
+				BindAddress: cfgPushBindAddress,
+				Debug: cfgDebug,
 			},
 			Key: protocol.Key(cfgKey),
 			JSONRouteFile:        cfgRouterJSON,

@@ -22,12 +22,16 @@ const (
 	HeartBeat = "hb"
 	// HeartBeatResponse 心跳响应
 	HeartBeatResponse = "hbr"
+	// Push2User 推送消息给指定用户
+	Push2User = "p2u"
 )
 
 // Command 信令
 type Command struct {
 	// Version 信令版本（第一个字母：'t'－文本协议，'p'－protobuf协议）
 	Version string
+	// AppID AppID
+	AppID string
 	// Name 信令名，用'/'分隔多级信令（用于路由），例如：msg/foo/bar
 	Name string
 	// Data 网关信令数据
@@ -78,6 +82,6 @@ func (cmd Command) String() string {
 			data = []byte("ERROR")
 		}
 	}
-	return fmt.Sprintf("\n{\n  Version: %s\n  Name: %s\n  Data: %s\n  Payload: %+v\n}\n",
-		cmd.Version, cmd.Name, string(data), cmd.Payload)
+	return fmt.Sprintf("\n{\n  Version: %s\n  AppID: %s\n  Name: %s\n  Data: %s\n  Payload: %+v\n}\n",
+		cmd.Version, cmd.AppID, cmd.Name, string(data), cmd.Payload)
 }

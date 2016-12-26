@@ -9,7 +9,7 @@ func TestNewRouter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewRouter error: %s\n", err)
 	}
-	inv := r.Find("msg")
+	inv := r.Find("test", "msg")
 	if inv == nil {
 		t.Fatalf("Find(%s) return nil", "msg")
 	}

@@ -36,9 +36,9 @@ func NewRouter(file string) (r *Router, err error) {
 	}
 
 	// 加载查询Map
-	searchMap := make(router.SampleMap)
+	appSearchMap := make(map[string]router.SampleMap)
 	dec := json.NewDecoder(f)
-	err = dec.Decode(&searchMap)
+	err = dec.Decode(&appSearchMap)
 	if err != nil {
 		glog.Errorf("router::driver::jsonfile::NewRouter(%s) json.Decode error: %s\n",
 			file, err)
@@ -49,21 +49,23 @@ func NewRouter(file string) (r *Router, err error) {
 		invokers: make(map[string]invoker.Invoker),
 	}
 
-	for key, routeInfo := range searchMap {
-		if routeInfo.Protocol != httpapi.Name {
-			glog.Errorf("router::driver::jsonfile::NewRouter(%s) unsupport protocol %s\n",
-				routeInfo.Protocol)
-			return nil, define.ErrUnsupportProtocol
+	for app, searchMap := range appSearchMap {
+		for key, routeInfo := range searchMap {
+			if routeInfo.Protocol != httpapi.Name {
+				glog.Errorf("router::driver::jsonfile::NewRouter(%s) unsupport protocol %s\n",
+					routeInfo.Protocol)
+				return nil, define.ErrUnsupportProtocol
+			}
+			r.invokers[app+"#"+key] = httpapi.NewInvoker(routeInfo.Parameter)
 		}
-		r.invokers[key] = httpapi.NewInvoker(routeInfo.Parameter)
 	}
 
 	return
 }
 
 // Find 查询路由
-func (r *Router) Find(name string) invoker.Invoker {
-	inv, found := r.invokers[name]
+func (r *Router) Find(app, name string) invoker.Invoker {
+	inv, found := r.invokers[app+"#"+name]
 	if !found {
 		return nil
 	}
