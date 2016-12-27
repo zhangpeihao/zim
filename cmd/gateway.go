@@ -8,17 +8,20 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zhangpeihao/zim/pkg/gateway"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
 	"time"
-	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
 )
 
 var (
 	cfgWebSocketBindAddress string
+	cfgWssBindAddress       string
 	cfgPushBindAddress      string
 	cfgKey                  string
 	cfgRouterJSON           string
+	cfgCertFile             string
+	cfgKeyFile              string
 )
 
 // gatewayCmd gateway命令
@@ -40,15 +43,18 @@ var gatewayCmd = &cobra.Command{
 		// 构建Gateway服务
 		gatewaySrv, err = gateway.NewServer(&gateway.ServerParameter{
 			ServerParameter: websocket.ServerParameter{
-				WebSocketBindAddress: cfgWebSocketBindAddress,
-				Debug:                cfgDebug,
+				WSBindAddress:  cfgWebSocketBindAddress,
+				WSSBindAddress: cfgWssBindAddress,
+				Debug:          cfgDebug,
+				CertFile:       cfgCertFile,
+				KeyFile:        cfgKeyFile,
 			},
 			Parameter: httpserver.Parameter{
 				BindAddress: cfgPushBindAddress,
-				Debug: cfgDebug,
+				Debug:       cfgDebug,
 			},
-			Key: protocol.Key(cfgKey),
-			JSONRouteFile:        cfgRouterJSON,
+			Key:           protocol.Key(cfgKey),
+			JSONRouteFile: cfgRouterJSON,
 		})
 		if err != nil {
 			glog.Errorln("Gateway.NewServer() error:", err)
@@ -75,8 +81,11 @@ func init() {
 	RootCmd.AddCommand(gatewayCmd)
 
 	gatewayCmd.PersistentFlags().StringVar(&cfgWebSocketBindAddress, "ws-bind", ":8870", "WebSocket服务绑定地址")
+	gatewayCmd.PersistentFlags().StringVar(&cfgWssBindAddress, "wss-bind", ":8872", "WebSocket加密服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgPushBindAddress, "push-bind", ":8871", "推送服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgKey, "key", "1234567890", "客户端Token验证密钥")
 	gatewayCmd.PersistentFlags().StringVar(&cfgRouterJSON, "router-json", "", "JSON router file.")
+	gatewayCmd.PersistentFlags().StringVar(&cfgCertFile, "wss-cert-file", "", "WebSocket加密服务证书文件路径")
+	gatewayCmd.PersistentFlags().StringVar(&cfgKeyFile, "wss-key-file", "", "WebSocket加密服务密钥文件路径")
 
 }

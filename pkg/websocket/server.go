@@ -22,10 +22,16 @@ const (
 
 // ServerParameter WebSocket服务构造参数
 type ServerParameter struct {
-	// WebSocketBindAddress WebSocket服务绑定地址
-	WebSocketBindAddress string
+	// WSBindAddress WebSocket服务绑定地址
+	WSBindAddress string
+	// WSSBindAddress WebSocket服务绑定地址
+	WSSBindAddress string
 	// Debug 调试模式
 	Debug bool
+	// CertFile 证书文件
+	CertFile string
+	// KeyFile 密钥文件
+	KeyFile string
 }
 
 // Server WebSocket服务
@@ -38,10 +44,14 @@ type Server struct {
 	closer *util.SafeCloser
 	// upgrader upgrader WebSocket upgrade参数
 	upgrader *websocket.Upgrader
-	// listener HTTP侦听对象
-	listener net.Listener
+	// httpListenerlistener HTTP侦听对象
+	httpListener net.Listener
 	// httpServer HTTP服务
 	httpServer *http.Server
+	// httpsListener HTTPS侦听对象
+	httpsListener net.Listener
+	// httpsServer HTTPS服务
+	httpsServer *http.Server
 }
 
 // NewServer 新建一个WebSocket服务实例
@@ -59,6 +69,7 @@ func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv
 		glog.Warningln("Websocket in debug mode!!!")
 	}
 	srv.httpServer = &http.Server{Handler: srv}
+	srv.httpsServer = &http.Server{Handler: srv}
 
 	return srv, err
 }
@@ -67,25 +78,40 @@ func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv
 func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 	glog.Infoln("websocket::Server::Run()")
 	srv.closer = closer
-	srv.listener, err = net.Listen("tcp4", srv.WebSocketBindAddress)
+	srv.httpListener, err = net.Listen("tcp4", srv.WSBindAddress)
 	if err != nil {
 		glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
-			srv.WebSocketBindAddress, err)
+			srv.WSBindAddress, err)
 		return
 	}
-	var httpErr error
+	srv.httpsListener, err = util.NewHTTPSListener(srv.CertFile, srv.KeyFile, srv.WSSBindAddress)
+	if err != nil {
+		glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
+			srv.WSBindAddress, err)
+		return
+	}
+	var httpErr, httpsErr error
 	go func() {
-		httpErr = srv.httpServer.Serve(srv.listener)
+		httpErr = srv.httpServer.Serve(srv.httpListener)
 	}()
+	go func() {
+		httpsErr = srv.httpsServer.Serve(srv.httpsListener)
+	}()
+
 	time.Sleep(time.Second)
 	if httpErr != nil {
 		glog.Errorf("websocket::Server::Run() http.Server(%s) error: %s\n",
-			srv.WebSocketBindAddress, err)
+			srv.WSBindAddress, httpErr)
 		return httpErr
+	}
+	if httpsErr != nil {
+		glog.Errorf("websocket::Server::Run() HTTPS http.Server(%s) error: %s\n",
+			srv.WSSBindAddress, httpsErr)
+		return httpsErr
 	}
 	err = srv.closer.Add(ServerName, func() {
 		glog.Warningln("websocket::Server::Run() to close")
-		srv.listener.Close()
+		srv.httpListener.Close()
 	})
 
 	return err
@@ -96,8 +122,8 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("websocket::Server::Close()")
 	defer srv.closer.Done(ServerName)
 	// 关闭HTTP服务
-	if srv.listener != nil {
-		err = srv.listener.Close()
+	if srv.httpListener != nil {
+		err = srv.httpListener.Close()
 	}
 	return err
 }
@@ -166,7 +192,7 @@ func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	strs := strings.Split(srv.WebSocketBindAddress, ":")
+	strs := strings.Split(srv.WSBindAddress, ":")
 	if len(strs) != 2 {
 		w.WriteHeader(500)
 		return

@@ -42,7 +42,10 @@ func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *p
 func TestServer(t *testing.T) {
 	handler := new(TestHandler)
 	s, err := NewServer(&ServerParameter{
-		WebSocketBindAddress: ":12343",
+		WSBindAddress:  ":12343",
+		WSSBindAddress: ":12344",
+		CertFile:       "./httpcert/cert.pem",
+		KeyFile:        "./httpcert/key.pem",
 	}, handler)
 	if err != nil {
 		t.Fatal("NewServer error:", err)
