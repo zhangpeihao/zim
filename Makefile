@@ -10,18 +10,18 @@ VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(TAG)
 
 GO_LDFLAGS=-ldflags "-X github.com/zhangpeihao/zim/pkg/version.VersionDev=$(TAG)"
 
-all: build_static
+all: build
 
 test:
 	go test -cover $(PACKAGES)
 
 # build the release files
-build: build_static build_cross build_tar
+build_all: build build_cross build_tar
 
-build_static:
+build: zim
+
+zim:
 	go build ${GO_LDFLAGS} github.com/zhangpeihao/zim
-	mkdir -p release
-	cp $(GOPATH)/bin/zim release/
 
 build_cross: build_cross_linux build_cross_linux_386 build_cross_windows build_cross_windows_386 build_cross_darwin
 
@@ -47,6 +47,11 @@ build_tar: build_cross
 	tar -cvzf release/windows/386/zim.tar.gz   -C release/windows/386   zim.exe
 	tar -cvzf release/darwin/amd64/zim.tar.gz  -C release/darwin/amd64  zim
 
+rebuild: clean build
+
+clean:
+	rm -f ./zim
+
 # build docker image
 docker: docker_build docker_save
 
@@ -59,3 +64,4 @@ docker_save: release/docker
 
 release/docker:
 	mkdir -p release/docker
+

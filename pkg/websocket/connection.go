@@ -57,19 +57,20 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 		if message == nil || len(message) == 0 {
 			glog.Warningln("websocket::connection::Run() message unsupport\n")
 			err = define.ErrUnsupportProtocol
-			break
+			return nil, err
 		}
 		switch message[0] {
 		case 't':
 		default:
-			glog.Warningln("websocket::connection::Run() message type[%s] unsupport\n", string(message[0]))
+			glog.Warningf("websocket::connection::Run() message type[%s] unsupport\n", string(message[0]))
 			err = define.ErrUnsupportProtocol
+			return nil, err
 		}
 		lines := bytes.SplitN(message, plaintext.CommandSep, plaintext.CommandLines)
 		if len(lines) != plaintext.CommandLines {
-			glog.Warningln("websocket::connection::Run() message has %s lines\n", len(lines))
+			glog.Warningf("websocket::connection::Run() message has %s lines\n", len(lines))
 			err = protocol.ErrParseFailed
-			break
+			return nil, err
 		}
 		cmd = &protocol.Command{
 			Version: string(lines[plaintext.CommandVersionLine]),
@@ -82,23 +83,25 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 			var loginCmd protocol.GatewayLoginCommand
 			if err = json.Unmarshal(data, &loginCmd); err != nil {
 				glog.Warningln("websocket::connection::Run() json.Unmarshal error:", err)
-				break
+				return nil, err
 			}
 			cmd.Data = &loginCmd
 		case protocol.Close:
 			var closeCmd protocol.GatewayCloseCommand
 			if err = json.Unmarshal(data, &closeCmd); err != nil {
 				glog.Warningln("websocket::connection::Run() json.Unmarshal error:", err)
-				break
+				return nil, err
 			}
 			cmd.Data = &closeCmd
 		case protocol.Message:
 			var msgCmd protocol.GatewayMessageCommand
 			if err = json.Unmarshal(data, &msgCmd); err != nil {
 				glog.Warningln("websocket::connection::Run() json.Unmarshal error:", err)
-				break
+				return nil, err
 			}
 			cmd.Data = &msgCmd
+		case protocol.HeartBeat:
+			conn.Send(HeartBeatResponseCommand)
 		}
 	}
 	return cmd, err

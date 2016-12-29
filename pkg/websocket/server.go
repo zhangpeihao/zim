@@ -63,6 +63,9 @@ func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv
 		upgrader: &websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool{
+				return true
+			},
 		},
 	}
 	if srv.Debug {
@@ -84,19 +87,25 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 			srv.WSBindAddress, err)
 		return
 	}
-	srv.httpsListener, err = util.NewHTTPSListener(srv.CertFile, srv.KeyFile, srv.WSSBindAddress)
-	if err != nil {
-		glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
-			srv.WSBindAddress, err)
-		return
+	if len(srv.CertFile) == 0 || len(srv.KeyFile) == 0 || len(srv.WSSBindAddress) == 0 {
+		glog.Warningln("websocket::Server::Run() https not set")
+	} else {
+		srv.httpsListener, err = util.NewHTTPSListener(srv.CertFile, srv.KeyFile, srv.WSSBindAddress)
+		if err != nil {
+			glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
+				srv.WSBindAddress, err)
+			return
+		}
 	}
 	var httpErr, httpsErr error
 	go func() {
 		httpErr = srv.httpServer.Serve(srv.httpListener)
 	}()
-	go func() {
-		httpsErr = srv.httpsServer.Serve(srv.httpsListener)
-	}()
+	if srv.httpsListener != nil {
+		go func() {
+			httpsErr = srv.httpsServer.Serve(srv.httpsListener)
+		}()
+	}
 
 	time.Sleep(time.Second)
 	if httpErr != nil {
@@ -192,12 +201,11 @@ func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	strs := strings.Split(srv.WSBindAddress, ":")
-	if len(strs) != 2 {
-		w.WriteHeader(500)
-		return
+	if r.TLS == nil {
+		homeTemplate.Execute(w, "ws://" + r.Host + "/ws")
+	}else {
+		homeTemplate.Execute(w, "wss://" + r.Host + "/ws")
 	}
-	homeTemplate.Execute(w, "ws://localhost:"+strs[1]+"/ws")
 }
 
 var homeTemplate = template.Must(template.New("").Parse(`

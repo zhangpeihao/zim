@@ -10,7 +10,7 @@ import (
 // GatewayCommonCommand 网关通用信令
 type GatewayCommonCommand struct {
 	// UserID 用户ID
-	UserID string `json:"id"`
+	UserID string `json:"userid"`
 	// Timestamp Unix时间戳（单位秒）
 	Timestamp int64 `json:"timestamp"`
 	// Token 认证字
