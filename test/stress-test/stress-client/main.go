@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"log"
 	"net/http"
@@ -64,7 +64,7 @@ func loop(id int) {
 	idstr := strconv.Itoa(id)
 	now := time.Now().Unix()
 	tokenKey := protocol.Key([]byte(*key))
-	loginCmd := &protocol.GatewayCommonCommand{idstr, now, ""}
+	loginCmd := &protocol.GatewayLoginCommand{idstr, "web", now, ""}
 	loginCmd.Token = tokenKey.Token(loginCmd)
 
 	cmd := &protocol.Command{
@@ -86,7 +86,13 @@ func loop(id int) {
 	}
 
 	// Login
-	err = c.WriteMessage(websocket.TextMessage, plaintext.Compose(cmd))
+	message, err := serialize.Compose(cmd)
+	if err != nil {
+		log.Println("serialize.Compose error:", err)
+		atomic.AddInt32(&errorCounter, 1)
+		return
+	}
+	err = c.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
 		log.Println("login error:", err)
 		atomic.AddInt32(&errorCounter, 1)
@@ -94,7 +100,12 @@ func loop(id int) {
 	}
 
 	cmd.Name = "msg"
-	message := plaintext.Compose(cmd)
+	message, err = serialize.Compose(cmd)
+	if err != nil {
+		log.Println("serialize.Compose error:", err)
+		atomic.AddInt32(&errorCounter, 1)
+		return
+	}
 
 	done := make(chan struct{})
 	defer close(done)
