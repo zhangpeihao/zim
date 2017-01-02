@@ -9,4 +9,6 @@ var (
 	ErrConnectionClosed = errors.New("connection closed")
 	// ErrUnsupportProtocol 协议不支持
 	ErrUnsupportProtocol = errors.New("unsupport protocol")
+	// ErrInvalidParameter 非法参数
+	ErrInvalidParameter = errors.New("invalid parameter")
 )

@@ -5,7 +5,7 @@ package httpserver
 import (
 	"bytes"
 	"flag"
-	"github.com/zhangpeihao/zim/pkg/push"
+	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"testing"
@@ -18,11 +18,11 @@ func init() {
 }
 
 type TestHandler struct {
-	data *push.Message
+	data *protocol.Command
 }
 
 // OnPushToUser 推送消息给用户
-func (handler *TestHandler) OnPushToUser(data *push.Message) {
+func (handler *TestHandler) OnPushToUser(data *protocol.Command) {
 	handler.data = data
 }
 

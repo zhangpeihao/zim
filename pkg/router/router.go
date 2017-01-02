@@ -15,5 +15,8 @@ type SampleMap map[string]*SampleInfo
 
 // Router 路由接口
 type Router interface {
+	// Find 查找调用
 	Find(app, name string) invoker.Invoker
+	// String 输出
+	String() string
 }

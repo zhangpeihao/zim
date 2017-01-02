@@ -43,7 +43,7 @@ test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
 bar`, true},
-		{"POST", 200, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), ``, true},
+		{"POST", 200, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), ``, false},
 		{"POST", 400, "http://test.stub/httpapi/testinvoker", "msg/foo/bar", []byte("foo"), `t1
 test
 msg/foo/bar
@@ -72,7 +72,7 @@ bar`, true},
 			Name:    testCase.Name,
 			Payload: testCase.Payload,
 		}
-		resp, err := invoker.Invoke(cmd)
+		resp, err := invoker.Invoke("", cmd)
 		if !testCase.InvokeError {
 			if err != nil {
 				t.Errorf("TestError Case[%d]\nTestInvoker error: %s\n", index+1, err)
@@ -85,12 +85,14 @@ bar`, true},
 			}
 			continue
 		}
-		expectResp, err := plaintext.Parse([]byte(testCase.StubResponseData))
-		if err != nil {
-			t.Fatalf("TestError Case[%d]\nparse expect response error: %s\n", index+1, err)
-		}
-		if !resp.Equal(expectResp) {
-			t.Errorf("TestError Case[%d]\nExpect reponse :%sGot: %s\n", index+1, expectResp, resp)
+		if len(testCase.StubResponseData) > 0 {
+			expectResp, err := plaintext.Parse([]byte(testCase.StubResponseData))
+			if err != nil {
+				t.Fatalf("TestError Case[%d]\nparse expect response error: %s\n", index+1, err)
+			}
+			if !resp.Equal(expectResp) {
+				t.Errorf("TestError Case[%d]\nExpect reponse :%sGot: %s\n", index+1, expectResp, resp)
+			}
 		}
 	}
 

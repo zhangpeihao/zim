@@ -5,10 +5,9 @@ package plaintext
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/pkg/errors"
+	"errors"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	pushprotocol "github.com/zhangpeihao/zim/pkg/push/driver/httpserver/protocol"
 	"io"
 	"reflect"
 	"testing"
@@ -25,7 +24,7 @@ func TestPlainText(t *testing.T) {
 			[]byte(`t1
 test
 msg/foo/bar
-{"id":"","timestamp":0,"token":""}
+{"userid":""}
 foo bar`),
 			protocol.Command{
 				"t1",
@@ -39,7 +38,7 @@ foo bar`),
 			[]byte(`t1
 test
 login
-{"id":"","timestamp":0,"token":""}
+{"userid":"","deviceid":"","timestamp":0,"token":""}
 foo bar`),
 			protocol.Command{
 				"t1",
@@ -53,7 +52,7 @@ foo bar`),
 			[]byte(`t1
 test
 close
-{"id":"","timestamp":0,"token":""}
+{"userid":""}
 foo bar`),
 			protocol.Command{
 				"t1",
@@ -67,13 +66,13 @@ foo bar`),
 			[]byte(`t1
 test
 p2u
-{"appid":"","userid":"","timestamp":0,"token":""}
+{"useridlist":""}
 foo bar`),
 			protocol.Command{
 				"t1",
 				"test",
 				"p2u",
-				&pushprotocol.Push2UserCommand{},
+				&protocol.Push2UserCommand{},
 				[]byte("foo bar"),
 			},
 		},
@@ -97,29 +96,32 @@ foo bar`),
 		cmd, err := Parse(testCase.Message)
 		if err != nil {
 			t.Errorf("TestPlainText Case[%d]\nParse %s error: %s",
-				index, testCase.Message, err)
+				index+1, testCase.Message, err)
 			continue
 		}
 		if !testCase.ExpectCommand.Equal(cmd) {
 			t.Errorf("TestPlainText Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index, testCase.Message, cmd, testCase.ExpectCommand)
+				index+1, testCase.Message, cmd, testCase.ExpectCommand)
 		}
 
 		cmd, err = ParseReader(bytes.NewBuffer(testCase.Message))
 		if err != nil {
 			t.Errorf("TestPlainText Case[%d]\nParse %s error: %s",
-				index, testCase.Message, err)
+				index+1, testCase.Message, err)
 			continue
 		}
 		if !testCase.ExpectCommand.Equal(cmd) {
 			t.Errorf("TestPlainText Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index, testCase.Message, cmd, testCase.ExpectCommand)
+				index+1, testCase.Message, cmd, testCase.ExpectCommand)
 		}
 
-		buf := Compose(cmd)
+		buf, err := Compose(cmd)
+		if err != nil {
+			t.Errorf("TestPlainText Case[%d] error: %s\n", index+1, err)
+		}
 		if bytes.Compare(buf, testCase.Message) != 0 {
 			t.Errorf("TestPlainText Case[%d]\nCompose %s\nGot: %s,\nExpect: %s",
-				index, cmd, buf, testCase.Message)
+				index+1, cmd, buf, testCase.Message)
 		}
 	}
 }

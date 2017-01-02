@@ -14,7 +14,6 @@ package httpapi
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/protocol"
@@ -28,8 +27,12 @@ import (
 const (
 	// Name 调用类型的名称
 	Name = "httpapi"
-	// Agent HTTP User-Agent
-	Agent = "zim"
+	// HeaderAgent HTTP User-Agent
+	HeaderAgent = "zim"
+	// HeaderUserID 用户ID名
+	HeaderUserID = "zim-UserID"
+	// HeaderAppID AppID名
+	HeaderAppID = "zim-AppID"
 	// Timeout 请求超时
 	Timeout = time.Duration(30 * time.Second)
 )
@@ -64,16 +67,21 @@ func NewInvoker(requestURL string) *Invoker {
 }
 
 // Invoke 通过HTTP API调用，发送信令
-func (invoker *Invoker) Invoke(reqCmd *protocol.Command) (respCmd *protocol.Command, err error) {
+func (invoker *Invoker) Invoke(userID string, reqCmd *protocol.Command) (respCmd *protocol.Command, err error) {
 	glog.Infof("invoker::driver::httpapi::Invoker::Invoke\n")
 	var req *http.Request
+
 	req, err = http.NewRequest("POST", invoker.RequestURL+"/"+reqCmd.Name,
 		bytes.NewBuffer(reqCmd.Payload))
 	if err != nil {
 		glog.Errorf("invoker::driver::httpapi::Invoke() error: %s\n", err)
 		return
 	}
-	req.Header.Set("User-Agent", Agent)
+	req.Header.Set("User-Agent", HeaderAgent)
+	if len(userID) > 0 {
+		req.Header.Set(HeaderUserID, userID)
+	}
+	req.Header.Set(HeaderAppID, reqCmd.AppID)
 	req.Close = true
 
 	client := &http.Client{Transport: Transport}
@@ -96,8 +104,7 @@ func (invoker *Invoker) Invoke(reqCmd *protocol.Command) (respCmd *protocol.Comm
 		return
 	}
 	if len(rawbody) == 0 {
-		glog.Errorf("invoker::driver::httpapi::Invoke() http is empty\n")
-		err = errors.New("HTTP response nothing")
+		glog.Infoln("invoker::driver::httpapi::Invoke() http is empty")
 		return
 	}
 
@@ -108,4 +115,9 @@ func (invoker *Invoker) Invoke(reqCmd *protocol.Command) (respCmd *protocol.Comm
 	}
 
 	return
+}
+
+// String 输出
+func (invoker *Invoker) String() string {
+	return "invoke http API (" + invoker.RequestURL + ")"
 }

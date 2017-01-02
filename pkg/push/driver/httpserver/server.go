@@ -6,7 +6,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
 	"github.com/zhangpeihao/zim/pkg/push"
-	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"html/template"
 	"net"
@@ -131,25 +130,7 @@ func (srv *Server) HandlePush2User(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-
-	var (
-		pushCmd *protocol.Push2UserCommand
-		ok      bool
-	)
-	pushCmd, ok = cmd.Data.(*protocol.Push2UserCommand)
-	if !ok {
-		glog.Warningln("push::driver::httpserver::Server::HandlePush2User() parse result error")
-		w.WriteHeader(500)
-		return
-	}
-
-	data := &push.Message{
-		AppID:       cmd.AppID,
-		UserID:      pushCmd.UserID,
-		CommandName: cmd.Name,
-		Payload:     cmd.Payload,
-	}
-	srv.handler.OnPushToUser(data)
+	srv.handler.OnPushToUser(cmd)
 	w.WriteHeader(200)
 }
 

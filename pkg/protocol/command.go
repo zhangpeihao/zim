@@ -29,15 +29,15 @@ const (
 // Command 信令
 type Command struct {
 	// Version 信令版本（第一个字母：'t'－文本协议，'p'－protobuf协议）
-	Version string
+	Version string `json:"version"`
 	// AppID AppID
-	AppID string
+	AppID string `json:"appid"`
 	// Name 信令名，用'/'分隔多级信令（用于路由），例如：msg/foo/bar
-	Name string
+	Name string `json:"name"`
 	// Data 网关信令数据
-	Data interface{}
+	Data interface{} `json:"data,omitempty"`
 	// Payload 业务数据
-	Payload []byte
+	Payload []byte `json:"payload,omitempty"`
 }
 
 // FirstPartName 第一段信令名
@@ -84,4 +84,15 @@ func (cmd Command) String() string {
 	}
 	return fmt.Sprintf("\n{\n  Version: %s\n  AppID: %s\n  Name: %s\n  Data: %s\n  Payload: %+v\n}\n",
 		cmd.Version, cmd.AppID, cmd.Name, string(data), cmd.Payload)
+}
+
+// Copy 复制
+func (cmd *Command) Copy() *Command {
+	return &Command{
+		Version: cmd.Version,
+		AppID:   cmd.AppID,
+		Name:    cmd.Name,
+		Data:    cmd.Data,
+		Payload: cmd.Payload,
+	}
 }

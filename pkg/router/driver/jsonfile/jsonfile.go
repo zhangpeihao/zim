@@ -11,6 +11,7 @@ Package jsonfile 通过JSON文件配置的路由
 package jsonfile
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
@@ -22,7 +23,8 @@ import (
 
 // Router 通过JSON文件路由
 type Router struct {
-	invokers map[string]invoker.Invoker
+	defaultInvoker invoker.Invoker
+	invokers       map[string]invoker.Invoker
 }
 
 // NewRouter 新建路由
@@ -56,7 +58,11 @@ func NewRouter(file string) (r *Router, err error) {
 					routeInfo.Protocol)
 				return nil, define.ErrUnsupportProtocol
 			}
-			r.invokers[app+"#"+key] = httpapi.NewInvoker(routeInfo.Parameter)
+			if key == "*" {
+				r.defaultInvoker = httpapi.NewInvoker(routeInfo.Parameter)
+			} else {
+				r.invokers[app+"#"+key] = httpapi.NewInvoker(routeInfo.Parameter)
+			}
 		}
 	}
 
@@ -65,9 +71,22 @@ func NewRouter(file string) (r *Router, err error) {
 
 // Find 查询路由
 func (r *Router) Find(app, name string) invoker.Invoker {
+	glog.Infof("Router::Find(%s, %s)\n", app, name)
 	inv, found := r.invokers[app+"#"+name]
 	if !found {
 		return nil
 	}
 	return inv
+}
+
+// String 输出
+func (r *Router) String() string {
+	buf := new(bytes.Buffer)
+	for key, inv := range r.invokers {
+		buf.WriteString(key)
+		buf.WriteString(": ")
+		buf.WriteString(inv.String())
+		buf.WriteString("\n")
+	}
+	return string(buf.Bytes())
 }

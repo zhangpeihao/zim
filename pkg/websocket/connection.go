@@ -3,12 +3,11 @@
 package websocket
 
 import (
-	"bytes"
-	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/protocol/driver"
 	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
 )
 
@@ -25,8 +24,12 @@ var (
 
 // Connection 连接
 type Connection struct {
-	login bool
-	c     *websocket.Conn
+	login    bool
+	id       string
+	userID   string
+	appID    string
+	deviceID string
+	c        *websocket.Conn
 }
 
 // NewConnection 新建连接
@@ -34,6 +37,26 @@ func NewConnection(c *websocket.Conn) *Connection {
 	return &Connection{
 		c: c,
 	}
+}
+
+// ID 连接ID
+func (conn *Connection) ID() string {
+	return conn.id
+}
+
+// AppID 应用ID
+func (conn *Connection) AppID() string {
+	return conn.appID
+}
+
+// UserID 用户ID
+func (conn *Connection) UserID() string {
+	return conn.userID
+}
+
+// DeviceID 设备ID
+func (conn *Connection) DeviceID() string {
+	return conn.deviceID
 }
 
 // ReadCommand 读取命令
@@ -55,53 +78,21 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 		cmd = HeartBeatResponseCommand
 	case websocket.TextMessage:
 		if message == nil || len(message) == 0 {
-			glog.Warningln("websocket::connection::Run() message unsupport\n")
+			glog.Warningln("websocket::connection::ReadCommand() message unsupport\n")
 			err = define.ErrUnsupportProtocol
 			return nil, err
 		}
 		switch message[0] {
 		case 't':
 		default:
-			glog.Warningf("websocket::connection::Run() message type[%s] unsupport\n", string(message[0]))
+			glog.Warningf("websocket::connection::ReadCommand() message type[%s] unsupport\n", string(message[0]))
 			err = define.ErrUnsupportProtocol
 			return nil, err
 		}
-		lines := bytes.SplitN(message, plaintext.CommandSep, plaintext.CommandLines)
-		if len(lines) != plaintext.CommandLines {
-			glog.Warningf("websocket::connection::Run() message has %s lines\n", len(lines))
-			err = protocol.ErrParseFailed
+		cmd, err = plaintext.Parse(message)
+		if err != nil {
+			glog.Warningf("websocket::connection::ReadCommand() plaintext.Parse error: %s\n", err)
 			return nil, err
-		}
-		cmd = &protocol.Command{
-			Version: string(lines[plaintext.CommandVersionLine]),
-			Name:    string(lines[plaintext.CommandNameLine]),
-		}
-		data := lines[plaintext.CommandDataLine]
-		cmd.Payload = lines[plaintext.CommandPayloadLine]
-		switch cmd.FirstPartName() {
-		case protocol.Login:
-			var loginCmd protocol.GatewayLoginCommand
-			if err = json.Unmarshal(data, &loginCmd); err != nil {
-				glog.Warningln("websocket::connection::Run() json.Unmarshal error:", err)
-				return nil, err
-			}
-			cmd.Data = &loginCmd
-		case protocol.Close:
-			var closeCmd protocol.GatewayCloseCommand
-			if err = json.Unmarshal(data, &closeCmd); err != nil {
-				glog.Warningln("websocket::connection::Run() json.Unmarshal error:", err)
-				return nil, err
-			}
-			cmd.Data = &closeCmd
-		case protocol.Message:
-			var msgCmd protocol.GatewayMessageCommand
-			if err = json.Unmarshal(data, &msgCmd); err != nil {
-				glog.Warningln("websocket::connection::Run() json.Unmarshal error:", err)
-				return nil, err
-			}
-			cmd.Data = &msgCmd
-		case protocol.HeartBeat:
-			conn.Send(HeartBeatResponseCommand)
 		}
 	}
 	return cmd, err
@@ -118,7 +109,10 @@ func (conn *Connection) String() string {
 }
 
 // LoginSuccess 登入成功
-func (conn *Connection) LoginSuccess() {
+func (conn *Connection) LoginSuccess(appID, userID, deviceID string) {
+	conn.appID = appID
+	conn.userID = userID
+	conn.id = define.ConnectionID(appID, userID)
 	conn.login = true
 }
 
@@ -129,5 +123,9 @@ func (conn *Connection) IsLogin() bool {
 
 // Send 发送命令
 func (conn *Connection) Send(cmd *protocol.Command) error {
-	return conn.c.WriteMessage(websocket.TextMessage, plaintext.Compose(cmd))
+	message, err := driver.Compose(cmd)
+	if err != nil {
+		return err
+	}
+	return conn.c.WriteMessage(websocket.TextMessage, message)
 }

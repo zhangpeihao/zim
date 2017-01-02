@@ -65,3 +65,20 @@ docker_save: release/docker
 release/docker:
 	mkdir -p release/docker
 
+# build test
+
+test/service-stub/service-stub:
+	cd test/service-stub && go build
+
+buid_test_stub: test/service-stub/service-stub
+
+# run
+
+run_stub:
+	cd test/service-stub && go run main.go
+
+run:
+	go run main.go gateway --config=./testconfig.yaml
+
+run_stress_client:
+	cd test/stress-test/stress-client && go run main.go

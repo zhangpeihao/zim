@@ -10,5 +10,7 @@ type CallbackFunc func(req *protocol.Command, resp *protocol.Command)
 // Invoker 调用接口
 type Invoker interface {
 	// Invoke 同步调用
-	Invoke(*protocol.Command) (*protocol.Command, error)
+	Invoke(string, *protocol.Command) (*protocol.Command, error)
+	// String 输出
+	String() string
 }

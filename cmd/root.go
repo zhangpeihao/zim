@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 )
 
@@ -56,13 +57,39 @@ func init() {
 func initConfig() {
 	if cfgFile != "" { // enable ability to specify config file via flag
 		viper.SetConfigFile(cfgFile)
+		viper.SetConfigType("yaml")
+	} else {
+		viper.SetConfigName(".zim")  // name of config file (without extension)
+		viper.AddConfigPath("$HOME") // adding home directory as first search path
+	}
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		if viper.InConfig("debug") {
+			cfgDebug = viper.GetBool("debug")
+		}
+		if viper.InConfig("verbose") {
+			cfgVerbose = viper.GetBool("verbose")
+		}
+		if viper.InConfig("router-json") {
+			cfgRouterJSON = viper.GetString("router-json")
+		}
+		if viper.InConfig("wss-cert-file") {
+			cfgCertFile = viper.GetString("wss-cert-file")
+		}
+		if viper.InConfig("wss-key-file") {
+			cfgKeyFile = viper.GetString("wss-key-file")
+		}
+
+	} else {
+		fmt.Println("ReadInConfig error:", err)
+		os.Exit(1)
 	}
 
-	viper.SetConfigName(".zim")  // name of config file (without extension)
-	viper.AddConfigPath("$HOME") // adding home directory as first search path
-	viper.AutomaticEnv()         // read in environment variables that match
-
 	if cfgVerbose {
+		jww.SetStdoutThreshold(jww.LevelTrace)
 		flag.Set("v", "4")
 		flag.Set("alsologtostderr", "true")
 	}
@@ -71,10 +98,5 @@ func initConfig() {
 	}
 	if len(cfgLogDir) > 0 {
 		flag.Set("log_dir", cfgLogDir)
-	}
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }

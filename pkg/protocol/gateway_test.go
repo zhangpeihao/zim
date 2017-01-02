@@ -6,7 +6,7 @@ import "testing"
 
 func TestKey_Token(t *testing.T) {
 	key := Key("1234567890")
-	cmd := GatewayCommonCommand{"123", 1234567, "E6B8D4E28E8DF1C331460DE60D9792FF"}
+	cmd := GatewayLoginCommand{"123", "web", 1234567, "67D0D82549FA531D1E3A70371B99BB76"}
 
 	token := key.Token(&cmd)
 	if token != cmd.Token {

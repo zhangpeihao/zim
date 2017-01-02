@@ -63,7 +63,7 @@ func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv
 		upgrader: &websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool{
+			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
 		},
@@ -188,7 +188,12 @@ FOR_LOOP:
 			}
 			break FOR_LOOP
 		}
-		srv.serverHandler.OnReceivedCommand(conn, cmd)
+		err = srv.serverHandler.OnReceivedCommand(conn, cmd)
+		if err != nil {
+			glog.Warningln("websocket::Server::Handle() error:", err)
+			conn.Close(true)
+			break FOR_LOOP
+		}
 	}
 	glog.Infoln("websocket::Server::Handle() ", conn, " closed")
 	srv.serverHandler.OnCloseConnection(conn)
@@ -202,9 +207,9 @@ func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.TLS == nil {
-		homeTemplate.Execute(w, "ws://" + r.Host + "/ws")
-	}else {
-		homeTemplate.Execute(w, "wss://" + r.Host + "/ws")
+		homeTemplate.Execute(w, "ws://"+r.Host+"/ws")
+	} else {
+		homeTemplate.Execute(w, "wss://"+r.Host+"/ws")
 	}
 }
 

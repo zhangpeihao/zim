@@ -18,7 +18,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	pushprotocol "github.com/zhangpeihao/zim/pkg/push/driver/httpserver/protocol"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -26,7 +25,9 @@ import (
 
 const (
 	// Version 版本
-	Version = "t1\n"
+	Version = "t1"
+	// ProbeByte 协议首字节
+	ProbeByte byte = 't'
 )
 
 var (
@@ -52,7 +53,7 @@ const (
 // ParseReader 使用Reader解析信令
 func ParseReader(r io.Reader) (cmd *protocol.Command, err error) {
 	if r == nil {
-		return nil, io.EOF
+		return nil, define.ErrInvalidParameter
 	}
 	var buf []byte
 	buf, err = ioutil.ReadAll(r)
@@ -84,42 +85,46 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 
 	data := lines[CommandDataLine]
 	cmd.Payload = lines[CommandPayloadLine]
-	switch cmd.FirstPartName() {
-	case protocol.Login:
-		var loginCmd protocol.GatewayLoginCommand
-		if err = json.Unmarshal(data, &loginCmd); err != nil {
-			glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
-			break
+	if data != nil && len(data) > 0 {
+		switch cmd.FirstPartName() {
+		case protocol.Login:
+			var loginCmd protocol.GatewayLoginCommand
+			if err = json.Unmarshal(data, &loginCmd); err != nil {
+				glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &loginCmd
+		case protocol.Close:
+			var closeCmd protocol.GatewayCloseCommand
+			if err = json.Unmarshal(data, &closeCmd); err != nil {
+				glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &closeCmd
+		case protocol.Message:
+			var msgCmd protocol.GatewayMessageCommand
+			if err = json.Unmarshal(data, &msgCmd); err != nil {
+				glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &msgCmd
+		case protocol.Push2User:
+			var pushCmd protocol.Push2UserCommand
+
+			if err = json.Unmarshal(data, &pushCmd); err != nil {
+				glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &pushCmd
 		}
-		cmd.Data = &loginCmd
-	case protocol.Close:
-		var closeCmd protocol.GatewayCloseCommand
-		if err = json.Unmarshal(data, &closeCmd); err != nil {
-			glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
-			break
-		}
-		cmd.Data = &closeCmd
-	case protocol.Message:
-		var msgCmd protocol.GatewayMessageCommand
-		if err = json.Unmarshal(data, &msgCmd); err != nil {
-			glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
-			break
-		}
-		cmd.Data = &msgCmd
-	case protocol.Push2User:
-		var pushCmd pushprotocol.Push2UserCommand
-		if err = json.Unmarshal(data, &pushCmd); err != nil {
-			glog.Warningln("protocol::driver::plaintext::ParseReader() json.Unmarshal error:", err)
-			break
-		}
-		cmd.Data = &pushCmd
 	}
 	return cmd, err
 }
 
 // Compose 将信令编码
-func Compose(cmd *protocol.Command) []byte {
+func Compose(cmd *protocol.Command) ([]byte, error) {
 	buf := bytes.NewBufferString(Version)
+	buf.WriteByte('\n')
 	buf.WriteString(cmd.AppID)
 	buf.WriteByte('\n')
 	buf.WriteString(cmd.Name)
@@ -132,5 +137,5 @@ func Compose(cmd *protocol.Command) []byte {
 	}
 	buf.Write(cmd.Payload)
 
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }

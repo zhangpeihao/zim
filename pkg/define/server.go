@@ -26,5 +26,5 @@ type ServerHandler interface {
 	// OnCloseConnection 当有连接关闭
 	OnCloseConnection(conn Connection)
 	// OnReceivedCommand 当收到命令
-	OnReceivedCommand(conn Connection, command *protocol.Command)
+	OnReceivedCommand(conn Connection, command *protocol.Command) error
 }

@@ -40,6 +40,7 @@ var gatewayCmd = &cobra.Command{
 			err        error
 			gatewaySrv util.SafeCloseServer
 		)
+		glog.Infoln("gateway run")
 		// 构建Gateway服务
 		gatewaySrv, err = gateway.NewServer(&gateway.ServerParameter{
 			ServerParameter: websocket.ServerParameter{

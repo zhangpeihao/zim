@@ -3,9 +3,9 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 	"os"
 	"os/signal"
 	"sync"
@@ -17,8 +17,8 @@ import (
 var (
 	// ErrCloseTimeout 关闭超时
 	ErrCloseTimeout = errors.New("close timeout")
-	// terminationSignals 退出信号量.
-	terminationSignals = []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
+	// TerminationSignals 退出信号量.
+	TerminationSignals = []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT}
 )
 
 // CloseFunc 关闭函数
@@ -91,16 +91,23 @@ func (sc *SafeCloser) Done(name string) error {
 func (sc *SafeCloser) WaitAndClose(timeout time.Duration, fn CloseFunc) error {
 	glog.Infof("util::SafeClose::WaitAndClose()\n")
 	sc.terminationSignalsCh = make(chan os.Signal, 1)
-	signal.Notify(sc.terminationSignalsCh, terminationSignals...)
-	defer func() {
-		signal.Stop(sc.terminationSignalsCh)
-		close(sc.terminationSignalsCh)
-	}()
-	<-sc.terminationSignalsCh
-	atomic.StoreInt32(&sc.closeFlag, 1)
-	fn()
-
+	WaitAndClose(sc.terminationSignalsCh, timeout, func() {
+		atomic.StoreInt32(&sc.closeFlag, 1)
+		fn()
+	})
 	return sc.Close(timeout)
+}
+
+// WaitAndClose 开始安全退出
+func WaitAndClose(terminationSignalsCh chan os.Signal, timeout time.Duration, fn CloseFunc) {
+	glog.Infof("util::WaitAndClose()\n")
+	signal.Notify(terminationSignalsCh, TerminationSignals...)
+	defer func() {
+		signal.Stop(terminationSignalsCh)
+		close(terminationSignalsCh)
+	}()
+	<-terminationSignalsCh
+	fn()
 }
 
 // Close 开始安全退出

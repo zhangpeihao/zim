@@ -6,12 +6,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/push"
 	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
 	"github.com/zhangpeihao/zim/pkg/router"
 	"github.com/zhangpeihao/zim/pkg/router/driver/jsonfile"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
+	"strings"
 	"sync"
 	"time"
 )
@@ -42,7 +42,7 @@ type Server struct {
 	// wsServer WebSocket服务
 	wsServer define.SubServer
 	// connections 连接Map
-	connections map[define.Connection]struct{}
+	connections map[string][]define.Connection
 	// router 路由
 	router router.Router
 	// pushServer Push服务
@@ -51,15 +51,17 @@ type Server struct {
 
 // NewServer 新建服务
 func NewServer(params *ServerParameter) (srv *Server, err error) {
-	glog.Info("gateway::NewServer()")
+	glog.Infoln("gateway::NewServer()")
 	srv = &Server{
 		ServerParameter: *params,
-		connections:     make(map[define.Connection]struct{}),
+		connections:     make(map[string][]define.Connection),
 	}
 	srv.router, err = jsonfile.NewRouter(srv.JSONRouteFile)
 	if err != nil {
 		return nil, err
 	}
+	glog.Infoln("gateway::NewServer() router:")
+	glog.Info(srv.router)
 	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.ServerParameter, srv)
 	if err != nil {
 		return nil, err
@@ -73,7 +75,7 @@ func NewServer(params *ServerParameter) (srv *Server, err error) {
 
 // Run 启动WebSocket服务
 func (srv *Server) Run(closer *util.SafeCloser) (err error) {
-	glog.Info("gateway::Server::Run()")
+	glog.Infoln("gateway::Server::Run()")
 	srv.closer = closer
 	if err = srv.wsServer.Run(closer); err != nil {
 		glog.Errorln("gateway::Server::Run() error:", err)
@@ -87,7 +89,7 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 
 // Close 退出
 func (srv *Server) Close(timeout time.Duration) (err error) {
-	glog.Info("gateway::Server::Close()")
+	glog.Infoln("gateway::Server::Close()")
 	defer srv.closer.Done(ServerName)
 	// 关闭WebSocket服务
 	if err = srv.wsServer.Close(timeout); err != nil {
@@ -95,10 +97,9 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 	}
 	// 关闭所有链接
 	srv.Lock()
-	connections := make([]define.Connection, len(srv.connections))
-	i := 0
-	for conn := range srv.connections {
-		connections[i] = conn
+	var connections []define.Connection
+	for _, conn := range srv.connections {
+		connections = append(connections, conn...)
 	}
 	srv.Unlock()
 	for _, conn := range connections {
@@ -109,29 +110,40 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 
 // OnNewConnection 连接新建处理
 func (srv *Server) OnNewConnection(conn define.Connection) {
-	glog.Info("gateway::Server::OnNewConnection()")
-	srv.Lock()
-	defer srv.Unlock()
-	srv.connections[conn] = struct{}{}
+	glog.Infoln("gateway::Server::OnNewConnection()")
+	// Todo: Login timeout
 }
 
 // OnCloseConnection 连接关闭处理
 func (srv *Server) OnCloseConnection(conn define.Connection) {
-	glog.Info("gateway::Server::OnCloseConnection()")
+	glog.Infoln("gateway::Server::OnCloseConnection()")
 	srv.Lock()
 	defer srv.Unlock()
-	delete(srv.connections, conn)
+	delete(srv.connections, conn.ID())
 }
 
 // OnReceivedCommand 收到命令
-func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.Command) {
+func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.Command) (err error) {
 	glog.Infof("gateway::Server::OnReceivedCommand() command %s from %s\n", command.Name, conn)
+	var (
+		loginCmd *protocol.GatewayLoginCommand
+		ok       bool
+	)
 	// 检查登入
-	if !conn.IsLogin() && command.Name != protocol.Login {
-		glog.Warningln("gateway::Server::OnReceivedCommand() first command must be login! got:",
-			command.Name)
-		conn.Close(false)
-		return
+	if command.Name != protocol.Login {
+		if !conn.IsLogin() {
+			glog.Warningln("gateway::Server::OnReceivedCommand() first command must be login! got:",
+				command.Name)
+			conn.Close(false)
+			return
+		}
+	} else {
+		loginCmd, ok = command.Data.(*protocol.GatewayLoginCommand)
+		if !ok {
+			glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
+				command.Name, err)
+			return
+		}
 	}
 
 	// Route
@@ -142,21 +154,79 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		return
 	}
 
-	resp, err := ink.Invoke(command)
+	resp, err := ink.Invoke(conn.UserID(), command)
 	if err != nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
 			command.Name, err)
 		return
 	}
 
+	if loginCmd != nil {
+		// Todo: Parse response
+		conn.LoginSuccess(command.AppID, loginCmd.UserID, loginCmd.DeviceID)
+		connid := conn.ID()
+		srv.Lock()
+		connections, find := srv.connections[connid]
+		var oldConn define.Connection
+		if find {
+			var index int
+			for index, oldConn = range connections {
+				if oldConn.DeviceID() == conn.DeviceID() {
+					glog.Warningf("gateway::Server::OnReceivedCommand() replace connection ID: %s\n", connid)
+					connections[index] = conn
+				} else {
+					oldConn = nil
+				}
+			}
+		}
+		if oldConn == nil {
+			connections = append(connections, conn)
+			srv.connections[connid] = connections
+		}
+		srv.Unlock()
+		if oldConn != nil {
+			// 在锁外关闭链接，防止死锁
+			oldConn.Close(false)
+		}
+	}
+
+	if resp == nil {
+		return
+	}
+
 	glog.Infof("gateway::Server::OnReceivedCommand() invoke(%s) response %s",
 		command.Name, resp)
-
+	if resp.Name == protocol.Push2User {
+		srv.OnPushToUser(resp)
+	}
 	return
 }
 
 // OnPushToUser 推送消息给用户
-func (srv *Server) OnPushToUser(data *push.Message) {
+func (srv *Server) OnPushToUser(cmd *protocol.Command) {
 	glog.Infof("gateway::Server::OnPushToUser()\n")
+	var (
+		pushCmd *protocol.Push2UserCommand
+		ok      bool
+	)
+	pushCmd, ok = cmd.Data.(*protocol.Push2UserCommand)
+	if !ok {
+		glog.Warningln("gateway::Server::OnPushToUser() parse result error")
+		return
+	}
 
+	touser := cmd.Copy()
+	touser.Data = nil
+	srv.Lock()
+	for _, id := range strings.Split(pushCmd.UserIDList, ",") {
+		connections, ok := srv.connections[define.ConnectionID(cmd.AppID, id)]
+		if ok {
+			for _, conn := range connections {
+				conn.Send(touser)
+			}
+		} else {
+			glog.Warningf("gateway::Server::OnPushToUser() not find connection")
+		}
+	}
+	srv.Unlock()
 }

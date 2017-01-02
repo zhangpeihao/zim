@@ -35,8 +35,9 @@ func (handler *TestHandler) OnCloseConnection(conn define.Connection) {
 }
 
 // OnReceivedCommand 当收到命令
-func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *protocol.Command) {
+func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *protocol.Command) error {
 	handler.lastCommand = command
+	return nil
 }
 
 func TestServer(t *testing.T) {
@@ -69,12 +70,10 @@ func TestServer(t *testing.T) {
 	buf.WriteString(protocol.Login)
 	buf.WriteByte('\n')
 	login := protocol.GatewayLoginCommand{
-		GatewayCommonCommand: protocol.GatewayCommonCommand{
-			UserID:    "123",
-			Timestamp: time.Now().Unix(),
-		},
+		UserID:    "123",
+		Timestamp: time.Now().Unix(),
 	}
-	login.Token = protocol.Key("1234567890").Token(&login.GatewayCommonCommand)
+	login.Token = protocol.Key("1234567890").Token(&login)
 	enc := json.NewEncoder(buf)
 	enc.Encode(&login)
 	buf.WriteString("\n")

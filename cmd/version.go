@@ -13,7 +13,7 @@ import (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "查看版本号",
-	Long: `查看程序版本号`,
+	Long:  `查看程序版本号`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version.Version)
 	},
