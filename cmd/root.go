@@ -82,10 +82,6 @@ func initConfig() {
 		if viper.InConfig("wss-key-file") {
 			cfgKeyFile = viper.GetString("wss-key-file")
 		}
-
-	} else {
-		fmt.Println("ReadInConfig error:", err)
-		os.Exit(1)
 	}
 
 	if cfgVerbose {
