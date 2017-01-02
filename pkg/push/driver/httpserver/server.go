@@ -4,7 +4,7 @@ package httpserver
 
 import (
 	"github.com/golang/glog"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 	"github.com/zhangpeihao/zim/pkg/push"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"html/template"

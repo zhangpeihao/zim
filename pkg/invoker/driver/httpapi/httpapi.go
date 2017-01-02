@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 	"io/ioutil"
 	"net"
 	"net/http"

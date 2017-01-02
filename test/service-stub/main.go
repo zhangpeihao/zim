@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/zhangpeihao/zim/pkg/invoker/driver/httpapi"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"log"
 	"net/http"
 )
@@ -56,7 +56,7 @@ var (
 // HandleLogin 登入处理
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-	msg, err := driver.Compose(loginResponse)
+	msg, err := serialize.Compose(loginResponse)
 	if err != nil {
 		w.WriteHeader(500)
 	} else {

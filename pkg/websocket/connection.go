@@ -7,8 +7,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 )
 
 var (
@@ -123,7 +123,7 @@ func (conn *Connection) IsLogin() bool {
 
 // Send 发送命令
 func (conn *Connection) Send(cmd *protocol.Command) error {
-	message, err := driver.Compose(cmd)
+	message, err := serialize.Compose(cmd)
 	if err != nil {
 		return err
 	}

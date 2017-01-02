@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"log"
 	"net/http"

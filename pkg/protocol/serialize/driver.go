@@ -1,14 +1,14 @@
 // Copyright 2016 Zhang Peihao <zhangpeihao@gmail.com>
 
-package driver
+package serialize
 
 import (
 	"errors"
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/alljson"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/alljson"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 	"io"
 	"io/ioutil"
 )
@@ -26,7 +26,7 @@ func ParseReader(r io.Reader) (cmd *protocol.Command, err error) {
 	var buf []byte
 	buf, err = ioutil.ReadAll(r)
 	if err != nil {
-		glog.Warningln("protocol::driver::alljson::ParseReader() json.Unmarshal error:", err)
+		glog.Warningln("protocol::serialize::alljson::ParseReader() json.Unmarshal error:", err)
 		return nil, err
 	}
 	return Parse(buf)
@@ -35,7 +35,7 @@ func ParseReader(r io.Reader) (cmd *protocol.Command, err error) {
 // Parse 解析信令
 func Parse(message []byte) (cmd *protocol.Command, err error) {
 	if message == nil || len(message) == 0 {
-		glog.Warningln("protocol::driver::ParseReader() message is empty")
+		glog.Warningln("protocol::serialize::ParseReader() message is empty")
 		err = define.ErrInvalidParameter
 		return
 	}

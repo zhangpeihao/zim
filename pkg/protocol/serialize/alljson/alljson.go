@@ -32,7 +32,7 @@ func ParseReader(r io.Reader) (cmd *protocol.Command, err error) {
 	var buf []byte
 	buf, err = ioutil.ReadAll(r)
 	if err != nil {
-		glog.Warningln("protocol::driver::alljson::ParseReader() json.Unmarshal error:", err)
+		glog.Warningln("protocol::serialize::alljson::ParseReader() json.Unmarshal error:", err)
 		return nil, err
 	}
 	return Parse(buf)
@@ -41,14 +41,14 @@ func ParseReader(r io.Reader) (cmd *protocol.Command, err error) {
 // Parse 解析信令
 func Parse(message []byte) (cmd *protocol.Command, err error) {
 	if message == nil || len(message) == 0 || message[0] != '{' {
-		glog.Warningln("protocol::driver::alljson::Parse() message unsupport")
+		glog.Warningln("protocol::serialize::alljson::Parse() message unsupport")
 		err = define.ErrUnsupportProtocol
 		return
 	}
 	var cmdData protocol.Command
 	cmd = &cmdData
 	if err = json.Unmarshal(message, cmd); err != nil {
-		glog.Warningln("protocol::driver::alljson::Parse() unmarshal error:", err)
+		glog.Warningln("protocol::serialize::alljson::Parse() unmarshal error:", err)
 		return
 	}
 
@@ -58,7 +58,7 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 			var loginCmd protocol.GatewayLoginCommand
 			err = Copy(cmd.Data, &loginCmd)
 			if err != nil {
-				glog.Warningln("protocol::driver::alljson::Parse() copy loginCmd error:", err)
+				glog.Warningln("protocol::serialize::alljson::Parse() copy loginCmd error:", err)
 				return
 			}
 			cmd.Data = &loginCmd
@@ -66,7 +66,7 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 			var closeCmd protocol.GatewayCloseCommand
 			err = Copy(cmd.Data, &closeCmd)
 			if err != nil {
-				glog.Warningln("protocol::driver::alljson::Parse() copy closeCmd error:", err)
+				glog.Warningln("protocol::serialize::alljson::Parse() copy closeCmd error:", err)
 				return
 			}
 			cmd.Data = &closeCmd
@@ -74,7 +74,7 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 			var msgCmd protocol.GatewayMessageCommand
 			err = Copy(cmd.Data, &msgCmd)
 			if err != nil {
-				glog.Warningln("protocol::driver::alljson::Parse() copy msgCmd error:", err)
+				glog.Warningln("protocol::serialize::alljson::Parse() copy msgCmd error:", err)
 				return
 			}
 			cmd.Data = &msgCmd
@@ -82,7 +82,7 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 			var pushCmd protocol.Push2UserCommand
 			err = Copy(cmd.Data, &pushCmd)
 			if err != nil {
-				glog.Warningln("protocol::driver::alljson::Parse() copy pushCmd error:", err)
+				glog.Warningln("protocol::serialize::alljson::Parse() copy pushCmd error:", err)
 				return
 			}
 			cmd.Data = &pushCmd

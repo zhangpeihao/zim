@@ -6,7 +6,7 @@ import (
 	"flag"
 	"github.com/jarcoal/httpmock"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/driver/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 	"testing"
 )
 
