@@ -1,5 +1,9 @@
 {
   "test": {
+    "*": {
+      "protocol": "httpapi",
+      "parameter": "http://test/im"
+    },
     "msg": {
       "protocol": "httpapi",
       "parameter": "http://test/im"
