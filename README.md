@@ -1,4 +1,5 @@
-# zim
+# zim[![Build Status](https://travis-ci.org/zhangpeihao/zim.svg?branch=master)](https://travis-ci.org/zhangpeihao/zim) [![Coverage Status](https://coveralls.io/repos/zhangpeihao/zim/badge.svg?branch=master&service=github)](https://coveralls.io/github/zhangpeihao/zim?branch=master)
+
 
 IM service
 
