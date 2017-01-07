@@ -6,12 +6,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
+	"github.com/zhangpeihao/zim/pkg/util/rand"
 	"testing"
 	"time"
+	"sync"
 )
 
 func init() {
@@ -20,31 +23,40 @@ func init() {
 }
 
 type TestHandler struct {
+	sync.Mutex
 	conn        define.Connection
 	lastCommand *protocol.Command
 }
 
 // OnNewConnection 当有新连接建立
 func (handler *TestHandler) OnNewConnection(conn define.Connection) {
+	handler.Lock()
+	defer handler.Unlock()
 	handler.conn = conn
 }
 
 // OnCloseConnection 当有连接关闭
 func (handler *TestHandler) OnCloseConnection(conn define.Connection) {
+	handler.Lock()
+	defer handler.Unlock()
 	handler.conn = nil
 }
 
 // OnReceivedCommand 当收到命令
 func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *protocol.Command) error {
+	handler.Lock()
+	defer handler.Unlock()
 	handler.lastCommand = command
 	return nil
 }
 
 func TestServer(t *testing.T) {
 	handler := new(TestHandler)
+	wsPort := rand.IntnRange(12300, 32300)
+	wssPort := wsPort + 1
 	s, err := NewServer(&ServerParameter{
-		WSBindAddress:  ":12343",
-		WSSBindAddress: ":12344",
+		WSBindAddress:  fmt.Sprintf(":%d", wsPort),
+		WSSBindAddress: fmt.Sprintf(":%d", wssPort),
 		CertFile:       "./httpcert/cert.pem",
 		KeyFile:        "./httpcert/key.pem",
 	}, handler)
@@ -58,7 +70,7 @@ func TestServer(t *testing.T) {
 	}
 
 	// New websocket client
-	client, _, err := websocket.DefaultDialer.Dial("ws://localhost:12343/ws", nil)
+	client, _, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://localhost:%d/ws", wsPort), nil)
 	if err != nil {
 		t.Fatal("WebSocket Dial error:", err)
 	}
@@ -86,6 +98,7 @@ func TestServer(t *testing.T) {
 	}
 
 	time.Sleep(time.Second)
+	handler.Lock()
 	if handler.conn == nil {
 		t.Error("No OnNewConnection callback")
 	}
@@ -112,13 +125,16 @@ func TestServer(t *testing.T) {
 			}
 		}
 	}
+	handler.Unlock()
 
 	// Close client
 	client.Close()
 	time.Sleep(time.Second)
+	handler.Lock()
 	if handler.conn != nil {
 		t.Error("No OnCloseConnection callback")
 	}
+	handler.Unlock()
 
 	s.Close(time.Second)
 	if err = closer.Close(time.Second); err != nil {

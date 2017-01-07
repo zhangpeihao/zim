@@ -31,22 +31,22 @@ msg/foo/bar
 {"userid":""}
 foo bar`),
 			protocol.Command{
-				"t1",
-				"test",
-				"msg/foo/bar",
-				&protocol.GatewayMessageCommand{},
-				[]byte("foo bar"),
+				Version: "t1",
+				AppID:   "test",
+				Name:    "msg/foo/bar",
+				Data:    &protocol.GatewayMessageCommand{},
+				Payload: []byte("foo bar"),
 			},
 		},
 		{
 			[]byte(`{"version":"j1","appid":"test","name":"msg/foo/bar","data":{"userid":""},"payload":"` +
 				base64.StdEncoding.EncodeToString([]byte("foo bar")) + `"}`),
 			protocol.Command{
-				"j1",
-				"test",
-				"msg/foo/bar",
-				&protocol.GatewayMessageCommand{},
-				[]byte("foo bar"),
+				Version: "j1",
+				AppID:   "test",
+				Name:    "msg/foo/bar",
+				Data:    &protocol.GatewayMessageCommand{},
+				Payload: []byte("foo bar"),
 			},
 		},
 	}

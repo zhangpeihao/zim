@@ -27,11 +27,11 @@ msg/foo/bar
 {"userid":""}
 foo bar`),
 			protocol.Command{
-				"t1",
-				"test",
-				"msg/foo/bar",
-				&protocol.GatewayMessageCommand{},
-				[]byte("foo bar"),
+				Version: "t1",
+				AppID:   "test",
+				Name:    "msg/foo/bar",
+				Data:    &protocol.GatewayMessageCommand{},
+				Payload: []byte("foo bar"),
 			},
 		},
 		{
@@ -41,11 +41,11 @@ login
 {"userid":"","deviceid":"","timestamp":0,"token":""}
 foo bar`),
 			protocol.Command{
-				"t1",
-				"test",
-				"login",
-				&protocol.GatewayLoginCommand{},
-				[]byte("foo bar"),
+				Version: "t1",
+				AppID:   "test",
+				Name:    "login",
+				Data:    &protocol.GatewayLoginCommand{},
+				Payload: []byte("foo bar"),
 			},
 		},
 		{
@@ -55,11 +55,11 @@ close
 {"userid":""}
 foo bar`),
 			protocol.Command{
-				"t1",
-				"test",
-				"close",
-				&protocol.GatewayCloseCommand{},
-				[]byte("foo bar"),
+				Version: "t1",
+				AppID:   "test",
+				Name:    "close",
+				Data:    &protocol.GatewayCloseCommand{},
+				Payload: []byte("foo bar"),
 			},
 		},
 		{
@@ -69,11 +69,11 @@ p2u
 {"useridlist":""}
 foo bar`),
 			protocol.Command{
-				"t1",
-				"test",
-				"p2u",
-				&protocol.Push2UserCommand{},
-				[]byte("foo bar"),
+				Version: "t1",
+				AppID:   "test",
+				Name:    "p2u",
+				Data:    &protocol.Push2UserCommand{},
+				Payload: []byte("foo bar"),
 			},
 		},
 		{
@@ -83,11 +83,11 @@ hb
 
 foo bar`),
 			protocol.Command{
-				"t1",
-				"test",
-				"hb",
-				nil,
-				[]byte("foo bar"),
+				Version: "t1",
+				AppID:   "test",
+				Name:    "hb",
+				Data:    nil,
+				Payload: []byte("foo bar"),
 			},
 		},
 	}

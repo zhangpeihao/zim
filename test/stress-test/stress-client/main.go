@@ -64,7 +64,12 @@ func loop(id int) {
 	idstr := strconv.Itoa(id)
 	now := time.Now().Unix()
 	tokenKey := protocol.Key([]byte(*key))
-	loginCmd := &protocol.GatewayLoginCommand{idstr, "web", now, ""}
+	loginCmd := &protocol.GatewayLoginCommand{
+		UserID:    idstr,
+		DeviceID:  "web",
+		Timestamp: now,
+		Token:     "",
+	}
 	loginCmd.Token = tokenKey.Token(loginCmd)
 
 	cmd := &protocol.Command{

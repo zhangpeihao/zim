@@ -4,11 +4,10 @@ package gateway
 
 import (
 	"github.com/golang/glog"
+	"github.com/zhangpeihao/zim/pkg/app"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
-	"github.com/zhangpeihao/zim/pkg/router"
-	"github.com/zhangpeihao/zim/pkg/router/driver/jsonfile"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
 	"strings"
@@ -27,8 +26,8 @@ type ServerParameter struct {
 	httpserver.Parameter
 	// Key 验证密钥
 	Key protocol.Key
-	// Route config JSON file
-	JSONRouteFile string
+	// AppConfigs 应用配置
+	AppConfigs []string
 }
 
 // Server 网关服务
@@ -43,10 +42,10 @@ type Server struct {
 	wsServer define.SubServer
 	// connections 连接Map
 	connections map[string][]define.Connection
-	// router 路由
-	router router.Router
 	// pushServer Push服务
 	pushServer *httpserver.Server
+	// apps 应用Map
+	apps map[string]*app.App
 }
 
 // NewServer 新建服务
@@ -55,13 +54,8 @@ func NewServer(params *ServerParameter) (srv *Server, err error) {
 	srv = &Server{
 		ServerParameter: *params,
 		connections:     make(map[string][]define.Connection),
+		apps:            make(map[string]*app.App),
 	}
-	srv.router, err = jsonfile.NewRouter(srv.JSONRouteFile)
-	if err != nil {
-		return nil, err
-	}
-	glog.Infoln("gateway::NewServer() router:")
-	glog.Info(srv.router)
 	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.ServerParameter, srv)
 	if err != nil {
 		return nil, err
@@ -129,25 +123,32 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		loginCmd *protocol.GatewayLoginCommand
 		ok       bool
 	)
+	app, ok := srv.apps[command.AppID]
+	if !ok {
+		glog.Warningln("gateway::Server::OnReceivedCommand() No application found",
+			command.Name)
+		conn.Close(false)
+		return define.ErrKnownApp
+	}
 	// 检查登入
 	if command.Name != protocol.Login {
 		if !conn.IsLogin() {
 			glog.Warningln("gateway::Server::OnReceivedCommand() first command must be login! got:",
 				command.Name)
 			conn.Close(false)
-			return
+			return define.ErrUnsupportProtocol
 		}
 	} else {
 		loginCmd, ok = command.Data.(*protocol.GatewayLoginCommand)
 		if !ok {
 			glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
 				command.Name, err)
-			return
+			return define.ErrNeedAuth
 		}
 	}
 
 	// Route
-	ink := srv.router.Find(command.AppID, command.Name)
+	ink := app.Router.Find(command.Name)
 
 	if ink == nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)

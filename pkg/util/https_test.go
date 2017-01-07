@@ -50,6 +50,6 @@ func TestHTTPSListener(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		t.Errorf("http.Get response status code: %s\n", resp.StatusCode)
+		t.Errorf("http.Get response status code: %d\n", resp.StatusCode)
 	}
 }

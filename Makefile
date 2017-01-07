@@ -1,19 +1,24 @@
-.PHONY: build docker
+.PHONY: build docker test fmt lint vet
 
-PACKAGES = $(shell go list ./... | grep -v /vendor/)
+
+BUILD := ./build
+
 TAG = $(shell git describe --match 'v[0-9]*' --dirty --always)
 VERSION_MAJOR = $(shell awk '/VersionMajor = / { print $$3; exit }' ./pkg/version/version.go)
 VERSION_MINOR = $(shell awk '/VersionMinor = / { print $$3; exit }' ./pkg/version/version.go)
 VERSION_PATCH = $(shell awk '/VersionPatch = / { print $$3; exit }' ./pkg/version/version.go)
-
 VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(TAG)
+
+PACKAGES = $(shell go list ./... | grep -v -e vendor -e tmp)
+ALL_SRC := $(shell find . -name "*.go" | grep -v -e tmp -e vendor \
+	-e ".*/\..*" \
+	-e ".*/_.*" \
+	-e ".*/mocks.*")
+TEST_DIRS := $(sort $(dir $(filter %_test.go,$(ALL_SRC))))
 
 GO_LDFLAGS=-ldflags "-X github.com/zhangpeihao/zim/pkg/version.VersionDev=$(TAG)"
 
 all: build
-
-test:
-	go test -cover $(PACKAGES)
 
 # build the release files
 build_all: build build_cross build_tar
@@ -82,3 +87,36 @@ run:
 
 run_stress_client:
 	cd test/stress-test/stress-client && go run main.go
+
+# fmt
+fmt:
+	gofmt -w -s cmd pkg test
+
+# lint
+lint:
+	@for pkg in $(PACKAGES); do golint $$pkg; done
+
+# vet
+vet:
+	@for pkg in $(PACKAGES); do go vet $$pkg; done
+
+# test
+test:
+	@echo Testing packages:
+	@mkdir -p $(BUILD)
+	@echo "mode: atomic" > $(BUILD)/cover.out
+	@for dir in $(TEST_DIRS); do \
+		mkdir -p $(BUILD)/"$$dir"; \
+		go test "$$dir" -race -v -timeout 5m -coverprofile=$(BUILD)/"$$dir"/coverage.out || exit 1; \
+		cat $(BUILD)/"$$dir"/coverage.out | grep -v "mode: atomic" >> $(BUILD)/cover.out; \
+	done
+
+# cover
+cover: test
+	go tool cover -html=$(BUILD)/cover.out
+
+cover_ci: test
+	goveralls -coverprofile=$(BUILD)/cover.out -service=travis-ci || echo -e "\x1b[31mCoveralls failed\x1b[m"
+
+# code check
+check: fmt lint vet test

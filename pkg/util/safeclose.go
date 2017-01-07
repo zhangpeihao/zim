@@ -36,7 +36,7 @@ type SafeCloseServer interface {
 type SafeCloser struct {
 	sync.Mutex
 	closeFlag            int32
-	gate                 *sync.WaitGroup
+	gate                 sync.WaitGroup
 	signals              map[string]chan struct{}
 	terminationSignalsCh chan os.Signal
 }
@@ -44,7 +44,6 @@ type SafeCloser struct {
 // NewSafeCloser 新建安全退出控制开关
 func NewSafeCloser() *SafeCloser {
 	return &SafeCloser{
-		gate:    new(sync.WaitGroup),
 		signals: make(map[string]chan struct{}),
 	}
 }
@@ -90,7 +89,9 @@ func (sc *SafeCloser) Done(name string) error {
 // WaitAndClose 开始安全退出
 func (sc *SafeCloser) WaitAndClose(timeout time.Duration, fn CloseFunc) error {
 	glog.Infof("util::SafeClose::WaitAndClose()\n")
+	sc.Lock()
 	sc.terminationSignalsCh = make(chan os.Signal, 1)
+	sc.Unlock()
 	WaitAndClose(sc.terminationSignalsCh, timeout, func() {
 		atomic.StoreInt32(&sc.closeFlag, 1)
 		fn()
@@ -133,7 +134,10 @@ func (sc *SafeCloser) Close(timeout time.Duration) (err error) {
 		// 异步等待所有控制项退出完成
 		closedCh := make(chan struct{})
 		go func() {
-			sc.gate.Wait()
+			sc.Lock()
+			gate := &sc.gate
+			sc.Unlock()
+			gate.Wait()
 			closedCh <- struct{}{}
 		}()
 

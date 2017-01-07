@@ -90,7 +90,9 @@ func TestSafeCloserInfiniteTimeout(t *testing.T) {
 
 	go func() {
 		time.Sleep(time.Second * time.Duration(3))
+		sc.Lock()
 		sc.terminationSignalsCh <- new(TestSignal)
+		sc.Unlock()
 	}()
 
 	closed := false

@@ -11,4 +11,10 @@ var (
 	ErrUnsupportProtocol = errors.New("unsupport protocol")
 	// ErrInvalidParameter 非法参数
 	ErrInvalidParameter = errors.New("invalid parameter")
+	// ErrKnownApp 不认识的App
+	ErrKnownApp = errors.New("known application")
+	// ErrAuthFailed 认证失败
+	ErrAuthFailed = errors.New("auth failed")
+	// ErrNeedAuth 需要认证
+	ErrNeedAuth = errors.New("need auth")
 )

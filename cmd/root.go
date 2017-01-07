@@ -73,9 +73,6 @@ func initConfig() {
 		if viper.InConfig("verbose") {
 			cfgVerbose = viper.GetBool("verbose")
 		}
-		if viper.InConfig("router-json") {
-			cfgRouterJSON = viper.GetString("router-json")
-		}
 		if viper.InConfig("wss-cert-file") {
 			cfgCertFile = viper.GetString("wss-cert-file")
 		}

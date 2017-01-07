@@ -6,6 +6,7 @@ package cmd
 import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/gateway"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
@@ -19,7 +20,7 @@ var (
 	cfgWssBindAddress       string
 	cfgPushBindAddress      string
 	cfgKey                  string
-	cfgRouterJSON           string
+	cfgAppConfigs           []string
 	cfgCertFile             string
 	cfgKeyFile              string
 )
@@ -54,8 +55,8 @@ var gatewayCmd = &cobra.Command{
 				BindAddress: cfgPushBindAddress,
 				Debug:       cfgDebug,
 			},
-			Key:           protocol.Key(cfgKey),
-			JSONRouteFile: cfgRouterJSON,
+			Key:        protocol.Key(cfgKey),
+			AppConfigs: cfgAppConfigs,
 		})
 		if err != nil {
 			glog.Errorln("Gateway.NewServer() error:", err)
@@ -80,13 +81,20 @@ var gatewayCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(gatewayCmd)
+	cobra.OnInitialize(initGatewayConfig)
 
 	gatewayCmd.PersistentFlags().StringVar(&cfgWebSocketBindAddress, "ws-bind", ":8870", "WebSocket服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgWssBindAddress, "wss-bind", ":8872", "WebSocket加密服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgPushBindAddress, "push-bind", ":8871", "推送服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgKey, "key", "1234567890", "客户端Token验证密钥")
-	gatewayCmd.PersistentFlags().StringVar(&cfgRouterJSON, "router-json", "", "JSON router file.")
+	gatewayCmd.PersistentFlags().StringSliceVar(&cfgAppConfigs, "app-config", nil, "应用配置文件.")
 	gatewayCmd.PersistentFlags().StringVar(&cfgCertFile, "wss-cert-file", "", "WebSocket加密服务证书文件路径")
 	gatewayCmd.PersistentFlags().StringVar(&cfgKeyFile, "wss-key-file", "", "WebSocket加密服务密钥文件路径")
 
+}
+
+func initGatewayConfig() {
+	if viper.InConfig("gateway.app-config") {
+		cfgAppConfigs = viper.GetStringSlice("gateway.app-config")
+	}
 }
