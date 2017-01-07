@@ -53,3 +53,14 @@ func TestHTTPSListener(t *testing.T) {
 		t.Errorf("http.Get response status code: %d\n", resp.StatusCode)
 	}
 }
+
+func TestError(t *testing.T) {
+	_, err := NewHTTPSListener("./httpcert/nofile.pem", "./httpcert/nofile.pem", ":12341")
+	if err == nil {
+		t.Error("NewHTTPSListener should return error with unexisted file path\n")
+	}
+	_, err = NewHTTPSListener("./httpcert/cert.pem", "./httpcert/key.pem", "error address")
+	if err == nil {
+		t.Error("NewHTTPSListener should return error with error address\n")
+	}
+}

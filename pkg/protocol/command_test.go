@@ -3,6 +3,7 @@
 package protocol
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -312,5 +313,23 @@ func TestString(t *testing.T) {
 			t.Errorf("\nTestString Case[%d] failed:\nexpect: %s\n   got: %s",
 				index+1, testCase.Expect, testCase.Cmd.String())
 		}
+	}
+}
+
+func TestCopy(t *testing.T) {
+	cmd := Command{
+		"t1",
+		"test",
+		"msg/foo/bar",
+		"data",
+		[]byte("foo bar"),
+	}
+	cpCmd := cmd.Copy()
+	if cmd.Version != cpCmd.Version ||
+		cmd.Name != cpCmd.Name ||
+		cmd.AppID != cpCmd.AppID ||
+		cmd.Data != cpCmd.Data ||
+		bytes.Compare(cmd.Payload, cpCmd.Payload) != 0 {
+		t.Errorf("Copy test failed")
 	}
 }

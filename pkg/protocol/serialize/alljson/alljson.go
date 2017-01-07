@@ -51,6 +51,11 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 		glog.Warningln("protocol::serialize::alljson::Parse() unmarshal error:", err)
 		return
 	}
+	if cmd.Version != Version {
+		glog.Warningf("protocol::serialize::alljson::Parse() unsupport version: %s\n", cmd.Version)
+		err = define.ErrUnsupportProtocol
+		return
+	}
 
 	if cmd.Data != nil {
 		switch cmd.FirstPartName() {

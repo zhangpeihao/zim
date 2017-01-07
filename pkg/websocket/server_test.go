@@ -33,6 +33,7 @@ func (handler *TestHandler) OnNewConnection(conn define.Connection) {
 	handler.Lock()
 	defer handler.Unlock()
 	handler.conn = conn
+	fmt.Printf("connection(%s, %s, %s, %s)\n", conn.ID(), conn.UserID(), conn.AppID(), conn.DeviceID())
 }
 
 // OnCloseConnection 当有连接关闭
@@ -47,6 +48,12 @@ func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *p
 	handler.Lock()
 	defer handler.Unlock()
 	handler.lastCommand = command
+	conn.LoginSuccess(command.AppID, "123", "web")
+	fmt.Printf("connection(%s, %s, %s, %s)\n", conn.ID(), conn.UserID(), conn.AppID(), conn.DeviceID())
+	if !conn.IsLogin() {
+		fmt.Printf("Login state error")
+	}
+	conn.Send(command)
 	return nil
 }
 
@@ -127,7 +134,13 @@ func TestServer(t *testing.T) {
 	}
 	handler.Unlock()
 
+	client.WriteMessage(websocket.PingMessage, nil)
+	client.WriteMessage(websocket.PongMessage, nil)
+	client.WriteMessage(websocket.BinaryMessage, []byte("xxxx"))
+	client.WriteMessage(websocket.TextMessage, nil)
+	time.Sleep(time.Second)
 	// Close client
+	client.WriteMessage(websocket.CloseMessage, nil)
 	client.Close()
 	time.Sleep(time.Second)
 	handler.Lock()

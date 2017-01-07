@@ -17,4 +17,6 @@ var (
 	ErrAuthFailed = errors.New("auth failed")
 	// ErrNeedAuth 需要认证
 	ErrNeedAuth = errors.New("need auth")
+	// ErrNoMoreMessage 没有消息
+	ErrNoMoreMessage = errors.New("no more message")
 )

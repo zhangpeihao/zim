@@ -70,7 +70,7 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 	case websocket.CloseMessage:
 		err = define.ErrConnectionClosed
 	case websocket.BinaryMessage:
-		err = define.ErrUnsupportProtocol
+		err = define.ErrNoMoreMessage
 	case websocket.PingMessage:
 		err = conn.c.WriteMessage(websocket.PongMessage, []byte{})
 		cmd = HeartBeatCommand

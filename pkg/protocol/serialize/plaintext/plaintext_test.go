@@ -190,7 +190,7 @@ foo bar`),
 		} else if reflect.TypeOf(err) == reflect.TypeOf(new(json.SyntaxError)) {
 			if testCase.Error != ErrJSONError {
 				t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
-					index+1, testCase.Message, ErrJSONError, testCase.Error)
+					index + 1, testCase.Message, err, testCase.Error)
 			}
 		} else if err != testCase.Error {
 			t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",

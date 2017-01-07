@@ -182,6 +182,9 @@ FOR_LOOP:
 		// 读取Command
 		cmd, err = conn.ReadCommand()
 		if err != nil {
+			if err == define.ErrNoMoreMessage {
+				continue
+			}
 			if err == define.ErrConnectionClosed {
 				glog.Infoln("websocket::Server::Handle() connection to close")
 				conn.Close(false)
