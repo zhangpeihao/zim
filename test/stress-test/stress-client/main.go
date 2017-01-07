@@ -22,7 +22,7 @@ var (
 	ws       = flag.String("ws", "ws://127.0.0.1:8870/ws", "The server WebSocket address.")
 	appid    = flag.String("appid", "test", "The appid.")
 	key      = flag.String("key", "1234567890", "The token key.")
-	number   = flag.Int("number", 1, "The number of connections.")
+	number = flag.Int("number", 100, "The number of connections.")
 	baseID   = flag.Int("base-id", 1, "The base ID of connections.")
 	interval = flag.Int("interval", 5, "The interval time of send message (in second).")
 )
