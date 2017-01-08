@@ -115,7 +115,7 @@ test:
 cover: test
 	go tool cover -html=$(BUILD)/cover.out
 
-cover_ci: test
+cover_ci: build test
 	goveralls -coverprofile=$(BUILD)/cover.out -service=travis-ci || echo -e "\x1b[31mCoveralls failed\x1b[m"
 
 # code check
