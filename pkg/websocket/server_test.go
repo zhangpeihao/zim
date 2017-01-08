@@ -12,9 +12,9 @@ import (
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/util/rand"
+	"sync"
 	"testing"
 	"time"
-	"sync"
 )
 
 func init() {

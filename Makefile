@@ -120,3 +120,9 @@ cover_ci: build test
 
 # code check
 check: fmt lint vet test
+
+# call graph
+call_graph:
+	go-callvis -sub pkg -limit github.com/zhangpeihao/zim github.com/zhangpeihao/zim | dot  -Tpng -o ./doc/call-graph.png
+
+

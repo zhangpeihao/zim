@@ -4,15 +4,15 @@ package alljson
 
 import (
 	"bytes"
-	"errors"
-	"encoding/json"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"testing"
-	"github.com/zhangpeihao/zim/pkg/define"
-	"reflect"
-	"io"
-	"fmt"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/zhangpeihao/zim/pkg/define"
+	"github.com/zhangpeihao/zim/pkg/protocol"
+	"io"
+	"reflect"
+	"testing"
 )
 
 type JSONData struct {
@@ -205,7 +205,7 @@ func TestError(t *testing.T) {
 			define.ErrUnsupportProtocol,
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":`, base64Payload)),
+			[]byte(`{"version":"j1","appid":"test","name":`),
 			ErrJSONError,
 		},
 		{
@@ -250,4 +250,3 @@ func TestParseReaderError(t *testing.T) {
 		t.Error("ParseReader(TestReader) should return error")
 	}
 }
-

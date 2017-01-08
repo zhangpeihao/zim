@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// SafeRand 带锁随机数
 type SafeRand struct {
 	sync.Mutex
 	rand *rand.Rand
