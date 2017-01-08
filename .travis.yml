@@ -1,6 +1,10 @@
 language: go
 sudo: false
 
+addons:
+  code_climate:
+    repo_token: 01663558311a148b8dd3b1b5d53abe65efcb913f6a0f64d562b3bc258f516ae2
+
 go:
   - 1.7
 
