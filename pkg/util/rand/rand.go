@@ -29,14 +29,14 @@ func Intn(max int) int {
 func IntnRange(min, max int) int {
 	staticRand.Lock()
 	defer staticRand.Unlock()
-	return staticRand.rand.Intn(max - min) + min
+	return staticRand.rand.Intn(max-min) + min
 }
 
 // Int63nRange 创建一个范围在[min,max)之间的随机int64整数
 func Int63nRange(min, max int64) int64 {
 	staticRand.Lock()
 	defer staticRand.Unlock()
-	return staticRand.rand.Int63n(max - min) + min
+	return staticRand.rand.Int63n(max-min) + min
 }
 
 // Seed 设置随机种子

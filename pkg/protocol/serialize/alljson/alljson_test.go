@@ -157,32 +157,32 @@ func TestAllJson(t *testing.T) {
 		cmd, err := Parse(testCase.Message)
 		if err != nil {
 			t.Errorf("TestAllJson Case[%d]\nParse %s error: %s",
-				index + 1, testCase.Message, err)
+				index+1, testCase.Message, err)
 			continue
 		}
 		if !testCase.ExpectCommand.Equal(cmd) {
 			t.Errorf("TestAllJson Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index + 1, testCase.Message, cmd, testCase.ExpectCommand)
+				index+1, testCase.Message, cmd, testCase.ExpectCommand)
 		}
 
 		cmd, err = ParseReader(bytes.NewBuffer(testCase.Message))
 		if err != nil {
 			t.Errorf("TestAllJson Case[%d]\nParse %s error: %s",
-				index + 1, testCase.Message, err)
+				index+1, testCase.Message, err)
 			continue
 		}
 		if !testCase.ExpectCommand.Equal(cmd) {
 			t.Errorf("TestAllJson Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index + 1, testCase.Message, cmd, testCase.ExpectCommand)
+				index+1, testCase.Message, cmd, testCase.ExpectCommand)
 		}
 
 		buf, err := Compose(cmd)
 		if err != nil {
-			t.Errorf("TestAllJson Case[%d] error: %s\n", index + 1, err)
+			t.Errorf("TestAllJson Case[%d] error: %s\n", index+1, err)
 		}
 		if bytes.Compare(buf, testCase.Message) != 0 {
 			t.Errorf("TestAllJson Case[%d]\nCompose %s\nGot: %s,\nExpect: %s",
-				index + 1, cmd, buf, testCase.Message)
+				index+1, cmd, buf, testCase.Message)
 		}
 	}
 }
@@ -217,15 +217,15 @@ func TestError(t *testing.T) {
 		_, err := Parse(testCase.Message)
 		if err == nil {
 			t.Errorf("TestError Case[%d]\nParse %s\nNo error\nExpect: %s",
-				index + 1, testCase.Message, testCase.Error)
+				index+1, testCase.Message, testCase.Error)
 		} else if reflect.TypeOf(err) == reflect.TypeOf(new(json.SyntaxError)) {
 			if testCase.Error != ErrJSONError {
 				t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
-					index + 1, testCase.Message, err, testCase.Error)
+					index+1, testCase.Message, err, testCase.Error)
 			}
 		} else if err != testCase.Error {
 			t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
-				index + 1, testCase.Message, reflect.TypeOf(err), testCase.Error)
+				index+1, testCase.Message, reflect.TypeOf(err), testCase.Error)
 		}
 	}
 }
@@ -238,7 +238,7 @@ func (r *TestReader) Read(p []byte) (int, error) {
 
 func TestParseReaderError(t *testing.T) {
 	var (
-		r io.Reader
+		r   io.Reader
 		err error
 	)
 	_, err = ParseReader(r)

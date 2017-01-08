@@ -91,7 +91,7 @@ bar`, true},
 				t.Fatalf("TestError Case[%d]\nparse expect response error: %s\n", index+1, err)
 			}
 			if !resp.Equal(expectResp) {
-				t.Errorf("TestError Case[%d]\nExpect response :%sGot: %s\n", index + 1, expectResp, resp)
+				t.Errorf("TestError Case[%d]\nExpect response :%sGot: %s\n", index+1, expectResp, resp)
 			}
 		}
 	}
