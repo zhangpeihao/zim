@@ -4,8 +4,8 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
-	"github.com/gogap/errors"
 	"github.com/gorilla/websocket"
 	"github.com/influxdata/influxdb/client/v2"
 	"github.com/spf13/cobra"

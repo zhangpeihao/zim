@@ -88,6 +88,24 @@
 			"revisionTime": "2014-10-17T20:07:13Z"
 		},
 		{
+			"checksumSHA1": "I8skxAF6SIe7E1JN7TvTkr5i7fI=",
+			"path": "github.com/influxdata/influxdb/client/v2",
+			"revision": "153277c01d7206e15cdf7a942640c2ab7e06d2c4",
+			"revisionTime": "2017-01-06T18:17:01Z"
+		},
+		{
+			"checksumSHA1": "9KEIBYNgzzexoDtv1uKWMF0FAmc=",
+			"path": "github.com/influxdata/influxdb/models",
+			"revision": "153277c01d7206e15cdf7a942640c2ab7e06d2c4",
+			"revisionTime": "2017-01-06T18:17:01Z"
+		},
+		{
+			"checksumSHA1": "H/J/qLqzUONXIecHHKtVZmxJZZA=",
+			"path": "github.com/influxdata/influxdb/pkg/escape",
+			"revision": "153277c01d7206e15cdf7a942640c2ab7e06d2c4",
+			"revisionTime": "2017-01-06T18:17:01Z"
+		},
+		{
 			"checksumSHA1": "yHSEfaBkSMHzZUwnKr7m8L3x4gA=",
 			"path": "github.com/jarcoal/httpmock",
 			"revision": "4442edb3db31196622da56482fd8d0fa375fba4d",
