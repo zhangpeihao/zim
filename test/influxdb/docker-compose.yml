@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "8090:8090"
+    environment:
+      - 'INFLUXDB_DATA_ENGINE=tsm1'
+      - 'INFLUXDB_ADMIN_ENABLED=true'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - 'GF_SERVER_ROOT_URL=http://influxdb:8086'
+    links:
+      - influxdb

@@ -5,18 +5,12 @@ package cmd
 import (
 	"flag"
 	"fmt"
-	"net/http"
-	"os"
-
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"net/http"
+	"os"
 )
-
-var cfgFile string
-var cfgVerbose bool
-var cfgVmodule, cfgLogDir string
-var cfgDebug bool
 
 // RootCmd root命令
 var RootCmd = &cobra.Command{
@@ -53,8 +47,16 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgLogDir, "log_dir", "", "log path")
 }
 
+var initConfigDone bool
+
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	if initConfigDone {
+		return
+	}
+	initConfigDone = true
+	cfgFile = "./test/gateway.yaml"
+	fmt.Println("initConfig")
 	if cfgFile != "" { // enable ability to specify config file via flag
 		viper.SetConfigFile(cfgFile)
 		viper.SetConfigType("yaml")
@@ -66,18 +68,12 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fmt.Println("ReadInConfig")
 		if viper.InConfig("debug") {
 			cfgDebug = viper.GetBool("debug")
 		}
 		if viper.InConfig("verbose") {
 			cfgVerbose = viper.GetBool("verbose")
-		}
-		if viper.InConfig("wss-cert-file") {
-			cfgCertFile = viper.GetString("wss-cert-file")
-		}
-		if viper.InConfig("wss-key-file") {
-			cfgKeyFile = viper.GetString("wss-key-file")
 		}
 	}
 

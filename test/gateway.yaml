@@ -1,0 +1,8 @@
+debug: true
+verbose: true
+router-json: ./test/service-stub/router.json
+gateway:
+  wss-cert-file: ./test/httpcert/cert.pem
+  wss-key-file: ./test/httpcert/key.pem
+  app-config:
+    - ./test/app.json

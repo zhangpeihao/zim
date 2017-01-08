@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -13,16 +14,6 @@ import (
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
 	"time"
-)
-
-var (
-	cfgWebSocketBindAddress string
-	cfgWssBindAddress       string
-	cfgPushBindAddress      string
-	cfgKey                  string
-	cfgAppConfigs           []string
-	cfgCertFile             string
-	cfgKeyFile              string
 )
 
 // gatewayCmd gateway命令
@@ -86,7 +77,6 @@ func init() {
 	gatewayCmd.PersistentFlags().StringVar(&cfgWebSocketBindAddress, "ws-bind", ":8870", "WebSocket服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgWssBindAddress, "wss-bind", ":8872", "WebSocket加密服务绑定地址")
 	gatewayCmd.PersistentFlags().StringVar(&cfgPushBindAddress, "push-bind", ":8871", "推送服务绑定地址")
-	gatewayCmd.PersistentFlags().StringVar(&cfgKey, "key", "1234567890", "客户端Token验证密钥")
 	gatewayCmd.PersistentFlags().StringSliceVar(&cfgAppConfigs, "app-config", nil, "应用配置文件.")
 	gatewayCmd.PersistentFlags().StringVar(&cfgCertFile, "wss-cert-file", "", "WebSocket加密服务证书文件路径")
 	gatewayCmd.PersistentFlags().StringVar(&cfgKeyFile, "wss-key-file", "", "WebSocket加密服务密钥文件路径")
@@ -94,7 +84,12 @@ func init() {
 }
 
 func initGatewayConfig() {
-	if viper.InConfig("gateway.app-config") {
+	fmt.Println("initGatewayConfig")
+	initConfig()
+
+	if viper.InConfig("gateway") {
 		cfgAppConfigs = viper.GetStringSlice("gateway.app-config")
+		cfgCertFile = viper.GetString("gateway.wss-cert-file")
+		cfgKeyFile = viper.GetString("gateway.wss-key-file")
 	}
 }

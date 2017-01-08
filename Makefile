@@ -1,4 +1,4 @@
-.PHONY: build docker test fmt lint vet
+.PHONY: build docker test fmt lint vet build stop_stress_test
 
 
 BUILD := ./build
@@ -23,9 +23,7 @@ all: build
 # build the release files
 build_all: build build_cross build_tar
 
-build: zim
-
-zim:
+build:
 	go build ${GO_LDFLAGS} github.com/zhangpeihao/zim
 
 build_cross: build_cross_linux build_cross_linux_386 build_cross_windows build_cross_windows_386 build_cross_darwin
@@ -78,15 +76,25 @@ test/service-stub/service-stub:
 buid_test_stub: test/service-stub/service-stub
 
 # run
+run_stub: build
+	@nohup ./zim stub > ./test/stub.log 2>&1 &
 
-run_stub:
-	cd test/service-stub && go run main.go
+run_gateway: build
+	@nohup ./zim gateway --config=./test/gateway.yaml > ./test/gateway.log 2>&1 &
 
-run:
-	go run main.go gateway --config=./testconfig.yaml
+run_gateway_touch: run_gateway
+	tail -f ./test/gateway.log
 
-run_stress_client:
-	cd test/stress-test/stress-client && go run main.go
+run_stress_client: build
+	@nohup ./zim stress > ./test/stress.log 2>&1 &
+
+stress_test: build
+	@nohup ./zim stub > ./test/stub.log 2>&1 &
+	@nohup ./zim gateway --config=./test/gateway.yaml > ./test/gateway.log 2>&1 &
+	@nohup ./zim stress > ./test/stress.log 2>&1 &
+
+stop_stress_test:
+	@killall -2 zim && sleep 4
 
 # fmt
 fmt:

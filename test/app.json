@@ -1,5 +1,7 @@
 {
-  "test": {
+  "name": "test",
+  "key": "1234567890",
+  "router": {
     "msg": {
       "protocol": "httpapi",
       "parameter": "http://localhost:8880"

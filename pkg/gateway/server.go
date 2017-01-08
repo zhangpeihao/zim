@@ -64,6 +64,14 @@ func NewServer(params *ServerParameter) (srv *Server, err error) {
 	if err != nil {
 		return nil, err
 	}
+	glog.Infof("srv.AppConfigs: %+v\n", srv.AppConfigs)
+	for _, config := range srv.AppConfigs {
+		appConfig, err := app.NewApp(config)
+		if err != nil {
+			return nil, err
+		}
+		srv.apps[appConfig.Name] = appConfig
+	}
 	return
 }
 
@@ -123,7 +131,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		loginCmd *protocol.GatewayLoginCommand
 		ok       bool
 	)
-	app, ok := srv.apps[command.AppID]
+	appConfig, ok := srv.apps[command.AppID]
 	if !ok {
 		glog.Warningln("gateway::Server::OnReceivedCommand() No application found",
 			command.Name)
@@ -148,7 +156,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 	}
 
 	// Route
-	ink := app.Router.Find(command.Name)
+	ink := appConfig.Router.Find(command.Name)
 
 	if ink == nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
