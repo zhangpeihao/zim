@@ -5,6 +5,7 @@
 [![GoDoc](https://godoc.org/github.com/zhangpeihao/zim?status.svg)](https://godoc.org/github.com/zhangpeihao/zim)
 [![Go Report Card](https://goreportcard.com/badge/github.com/zhangpeihao/zim)](https://goreportcard.com/report/github.com/zhangpeihao/zim)
 [![Code Climate](https://codeclimate.com/github/zhangpeihao/zim/badges/gpa.svg)](https://codeclimate.com/github/zhangpeihao/zim)
+[![Image Size](https://images.microbadger.com/badges/image/zhangpeihao/zim.svg)](https://microbadger.com/images/zhangpeihao/zim "Get your own image badge on microbadger.com")
 
 IM service
 
