@@ -15,6 +15,7 @@ var (
 	cfgVmodule string
 	cfgLogDir  string
 	cfgDebug   bool
+	cfgCPU     int
 
 	// Gateway 参数
 	cfgWebSocketBindAddress string
@@ -37,7 +38,6 @@ var (
 	cfgInfluxdbUser     string
 	cfgInfluxdbPassword string
 	cfgInfluxdbInterval uint
-	gInfluxdbInterval   time.Duration
 
 	// stub 参数
 	cfgStubBindAddress string
@@ -47,7 +47,7 @@ var (
 	gReceiveCounter    int32
 	gSendCounter       int32
 	gCheckErrorCounter int32
-	gPreTime           *time.Time
+	gPreTime           int64
 
 	// 程序控制变量
 	gCloseGate = new(sync.WaitGroup)

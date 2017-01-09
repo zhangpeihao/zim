@@ -6,6 +6,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	"github.com/influxdata/influxdb/client/v2"
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -37,6 +39,8 @@ func init() {
 	stressCmd.PersistentFlags().UintVar(&cfgInfluxdbInterval, "influxdb-interval", 60, "influxDB数据消息发送间隔时间（单位：秒）")
 }
 
+var gTag string
+
 // stressCmd represents the stress command
 var stressCmd = &cobra.Command{
 	Use:   "stress",
@@ -46,6 +50,14 @@ var stressCmd = &cobra.Command{
 按照设定的连接数，发送消息体大小，发送频率，向指定服务器
 建立连接，发送消息，并校验接受数据。`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		defer func() {
+			if err := recover(); err != nil {
+				glog.Errorln("panic:", err)
+				glog.Errorln(string(debug.Stack()))
+				os.Exit(-1)
+			}
+		}()
+
 		if cfgInterval == 0 {
 			return errors.New("Interval必须大于0")
 		}
@@ -54,8 +66,9 @@ var stressCmd = &cobra.Command{
 			return errors.New("客户端数量必须大于0，小于65500")
 		}
 
+		gTag = fmt.Sprintf("%d_%d", cfgBase, cfgBase+cfgNumber-1)
+
 		gInterval = time.Second * time.Duration(cfgInterval)
-		gInfluxdbInterval = time.Second * time.Duration(cfgInfluxdbInterval)
 
 		go stressInfluxDBLoop()
 
@@ -122,6 +135,7 @@ func stressLoop(id uint) {
 		CountError()
 		return
 	}
+	defer c.Close()
 
 	// Login
 	message, err := serialize.Compose(cmd)
@@ -197,10 +211,10 @@ func stressSummary(now *time.Time) error {
 	if now == nil {
 		sNow := time.Now()
 		now = &sNow
-	} else if gPreTime != nil && (*gPreTime).Add(gInfluxdbInterval).After(*now) {
+	} else if gPreTime != 0 && gPreTime+int64(cfgInfluxdbInterval) > now.Unix() {
 		return nil
 	}
-	gPreTime = now
+	gPreTime = now.Unix()
 	// Make client
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     cfgInfluxdbAddress,
@@ -223,7 +237,7 @@ func stressSummary(now *time.Time) error {
 	sendCounter := atomic.LoadInt32(&gSendCounter)
 	checkErrorCounter := atomic.LoadInt32(&gCheckErrorCounter)
 
-	log.Printf("errorCounter: %d, recevieCounter: %d, sendCounter: %d, checkErrorCounter: %d\n",
+	glog.Infof("errorCounter: %d, recevieCounter: %d, sendCounter: %d, checkErrorCounter: %d\n",
 		errorCounter, recevieCounter, sendCounter, checkErrorCounter)
 
 	atomic.AddInt32(&gErrorCounter, -errorCounter)
@@ -232,7 +246,7 @@ func stressSummary(now *time.Time) error {
 	atomic.AddInt32(&gCheckErrorCounter, -checkErrorCounter)
 
 	// Create a point and add to batch
-	tags := map[string]string{"stress": "client"}
+	tags := map[string]string{"id_range": gTag}
 	fields := map[string]interface{}{
 		"error":      errorCounter,
 		"receive":    recevieCounter,

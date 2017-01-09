@@ -1,13 +1,13 @@
-.PHONY: build docker test fmt lint vet build stop_stress_test
-
+.PHONY: all build build_all build_cross docker test fmt lint vet build stop_stress_test
 
 BUILD := ./build
 
-TAG = $(shell git describe --match 'v[0-9]*' --dirty --always)
+TAG = $(shell git describe --match 'v[0-9]*' --always)
 VERSION_MAJOR = $(shell awk '/VersionMajor = / { print $$3; exit }' ./pkg/version/version.go)
 VERSION_MINOR = $(shell awk '/VersionMinor = / { print $$3; exit }' ./pkg/version/version.go)
 VERSION_PATCH = $(shell awk '/VersionPatch = / { print $$3; exit }' ./pkg/version/version.go)
-VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)-$(TAG)
+VERSION_BASE = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
+VERSION = $(VERSION_BASE)-$(TAG)
 
 PACKAGES = $(shell go list ./... | grep -v -e vendor -e tmp)
 ALL_SRC := $(shell find . -name "*.go" | grep -v -e tmp -e vendor \
@@ -15,6 +15,10 @@ ALL_SRC := $(shell find . -name "*.go" | grep -v -e tmp -e vendor \
 	-e ".*/_.*" \
 	-e ".*/mocks.*")
 TEST_DIRS := $(sort $(dir $(filter %_test.go,$(ALL_SRC))))
+
+DOCKER_RELEASE_FILE = release/docker/zim-$(VERSION_BASE).docker
+ZIM_RELEASE_FILES = release/linux/amd64/zim.tar.gz release/linux/amd64/zim release/linux/386/zim.tar.gz release/linux/386/zim release/windows/amd64/zim.tar.gz release/windows/amd64/zim.exe release/windows/386/zim.tar.gz release/windows/386/zim.exe release/darwin/amd64/zim.tar.gz release/darwin/amd64/zim
+RELEASE_FILES = $(DOCKER_RELEASE_FILE) $(ZIM_RELEASE_FILES)
 
 GO_LDFLAGS=-ldflags "-X github.com/zhangpeihao/zim/pkg/version.VersionDev=$(TAG)"
 
@@ -59,14 +63,18 @@ clean:
 docker: docker_build docker_save
 
 docker_build: build_cross_linux
-	docker build -t zim:latest .
-	docker tag zim:latest zim:$(VERSION)
+	docker build -t zhangpeihao/zim:latest .
+	docker tag zhangpeihao/zim:latest zhangpeihao/zim:$(VERSION_BASE)
 
 docker_save: release/docker
-	docker save -o release/docker/zim-$(VERSION).docker zim:$(VERSION)
+	docker save -o $(DOCKER_RELEASE_FILE) zhangpeihao/zim:$(VERSION_BASE)
 
 release/docker:
 	mkdir -p release/docker
+
+docker_push: docker
+	docker push zhangpeihao/zim:latest
+	docker push zhangpeihao/zim:$(VERSION_BASE)
 
 # build test
 
@@ -133,4 +141,7 @@ check: fmt lint vet test
 call_graph:
 	go-callvis -sub pkg -limit github.com/zhangpeihao/zim github.com/zhangpeihao/zim | dot  -Tpng -o ./doc/call-graph.png
 
-
+# release
+release: build_tar docker_push call_graph
+	git add $(RELEASE_FILES) ./doc/call-graph.png
+	git commit -m "commit all release files by make"

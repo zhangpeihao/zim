@@ -1,8 +1,8 @@
-zim
-/release
+/zim
 /tmp
 /build
 /test/*.log
+/cmd/summary_test.go
 
 # OSX leaves these everywhere on SMB shares
 ._*

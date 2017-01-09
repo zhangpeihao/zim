@@ -22,3 +22,10 @@ func TestRecoverFromPanic(t *testing.T) {
 	}
 	panicFunc()
 }
+
+func TestSetCPU(t *testing.T) {
+	SetCPU(10)
+	SetCPU(-1)
+	SetCPU(0)
+	SetCPU(1)
+}

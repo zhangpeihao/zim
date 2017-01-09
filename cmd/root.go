@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"os"
 )
@@ -40,11 +41,12 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.zim.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default /etc/zim.yaml)")
 	RootCmd.PersistentFlags().BoolVarP(&cfgVerbose, "verbose", "v", false, "verbose mode")
 	RootCmd.PersistentFlags().BoolVarP(&cfgDebug, "debug", "d", false, "debug mode. runtime profiling data at: htpp://localhost:8766/debug/pprof")
 	RootCmd.PersistentFlags().StringVar(&cfgVmodule, "vmodule", "", "vmodule for glog")
 	RootCmd.PersistentFlags().StringVar(&cfgLogDir, "log_dir", "", "log path")
+	RootCmd.PersistentFlags().IntVar(&cfgCPU, "cpu", 1, "the number of logical CPUs used by the current process")
 }
 
 var initConfigDone bool
@@ -55,14 +57,12 @@ func initConfig() {
 		return
 	}
 	initConfigDone = true
-	cfgFile = "./test/gateway.yaml"
-	fmt.Println("initConfig")
 	if cfgFile != "" { // enable ability to specify config file via flag
 		viper.SetConfigFile(cfgFile)
 		viper.SetConfigType("yaml")
 	} else {
-		viper.SetConfigName(".zim")  // name of config file (without extension)
-		viper.AddConfigPath("$HOME") // adding home directory as first search path
+		viper.SetConfigName("zim")  // name of config file (without extension)
+		viper.AddConfigPath("/etc") // adding home directory as first search path
 	}
 	viper.AutomaticEnv() // read in environment variables that match
 
@@ -88,4 +88,5 @@ func initConfig() {
 	if len(cfgLogDir) > 0 {
 		flag.Set("log_dir", cfgLogDir)
 	}
+	util.SetCPU(cfgCPU)
 }
