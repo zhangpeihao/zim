@@ -107,7 +107,8 @@ func WaitAndClose(terminationSignalsCh chan os.Signal, timeout time.Duration, fn
 		signal.Stop(terminationSignalsCh)
 		close(terminationSignalsCh)
 	}()
-	<-terminationSignalsCh
+	s := <-terminationSignalsCh
+	glog.Warningf("Received signal: %s\n", s.String())
 	fn()
 }
 
