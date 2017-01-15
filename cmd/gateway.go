@@ -35,14 +35,14 @@ var gatewayCmd = &cobra.Command{
 		glog.Infoln("gateway run")
 		// 构建Gateway服务
 		gatewaySrv, err = gateway.NewServer(&gateway.ServerParameter{
-			ServerParameter: websocket.ServerParameter{
+			WSParameter: websocket.WSParameter{
 				WSBindAddress:  cfgWebSocketBindAddress,
 				WSSBindAddress: cfgWssBindAddress,
 				Debug:          cfgDebug,
 				CertFile:       cfgCertFile,
 				KeyFile:        cfgKeyFile,
 			},
-			Parameter: httpserver.Parameter{
+			PushHTTPServerParameter: httpserver.PushHTTPServerParameter{
 				BindAddress: cfgPushBindAddress,
 				Debug:       cfgDebug,
 			},

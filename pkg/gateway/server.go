@@ -22,8 +22,8 @@ const (
 
 // ServerParameter 网关服务参数
 type ServerParameter struct {
-	websocket.ServerParameter
-	httpserver.Parameter
+	websocket.WSParameter
+	httpserver.PushHTTPServerParameter
 	// Key 验证密钥
 	Key protocol.Key
 	// AppConfigs 应用配置
@@ -56,11 +56,11 @@ func NewServer(params *ServerParameter) (srv *Server, err error) {
 		connections:     make(map[string][]define.Connection),
 		apps:            make(map[string]*app.App),
 	}
-	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.ServerParameter, srv)
+	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.WSParameter, srv)
 	if err != nil {
 		return nil, err
 	}
-	srv.pushServer, err = httpserver.NewServer(&srv.ServerParameter.Parameter, srv)
+	srv.pushServer, err = httpserver.NewServer(&srv.ServerParameter.PushHTTPServerParameter, srv)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,11 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 	glog.Infoln("gateway::Server::Run()")
 	srv.closer = closer
 	if err = srv.wsServer.Run(closer); err != nil {
-		glog.Errorln("gateway::Server::Run() error:", err)
+		glog.Errorln("gateway::Server::Run() wsServer error:", err)
+		return err
+	}
+	if err = srv.pushServer.Run(closer); err != nil {
+		glog.Errorln("gateway::Server::Run() pushServer run error:", err)
 		return err
 	}
 	err = srv.closer.Add(ServerName, func() {

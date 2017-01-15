@@ -61,7 +61,7 @@ func TestServer(t *testing.T) {
 	handler := new(TestHandler)
 	wsPort := rand.IntnRange(12300, 32300)
 	wssPort := wsPort + 1
-	s, err := NewServer(&ServerParameter{
+	s, err := NewServer(&WSParameter{
 		WSBindAddress:  fmt.Sprintf(":%d", wsPort),
 		WSSBindAddress: fmt.Sprintf(":%d", wssPort),
 		CertFile:       "./httpcert/cert.pem",

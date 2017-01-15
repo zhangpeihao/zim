@@ -28,7 +28,7 @@ func (handler *TestHandler) OnPushToUser(data *protocol.Command) {
 
 func TestServer(t *testing.T) {
 	handler := new(TestHandler)
-	s, err := NewServer(&Parameter{
+	s, err := NewServer(&PushHTTPServerParameter{
 		BindAddress: ":12343",
 	}, handler)
 	if err != nil {

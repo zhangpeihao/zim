@@ -8,10 +8,10 @@ import (
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
-	"text/template"
 	"net"
 	"net/http"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -20,8 +20,8 @@ const (
 	ServerName = "websocket"
 )
 
-// ServerParameter WebSocket服务构造参数
-type ServerParameter struct {
+// WSParameter WebSocket服务构造参数
+type WSParameter struct {
 	// WSBindAddress WebSocket服务绑定地址
 	WSBindAddress string
 	// WSSBindAddress WebSocket服务绑定地址
@@ -36,8 +36,8 @@ type ServerParameter struct {
 
 // Server WebSocket服务
 type Server struct {
-	// ServerParameter WebSocket服务构造参数
-	ServerParameter
+	// WSParameter WebSocket服务构造参数
+	WSParameter
 	// serverHandler Server回调
 	serverHandler define.ServerHandler
 	// closer 安全退出锁
@@ -55,11 +55,11 @@ type Server struct {
 }
 
 // NewServer 新建一个WebSocket服务实例
-func NewServer(params *ServerParameter, serverHandler define.ServerHandler) (srv *Server, err error) {
+func NewServer(params *WSParameter, serverHandler define.ServerHandler) (srv *Server, err error) {
 	glog.Infoln("websocket::NewServer")
 	srv = &Server{
-		ServerParameter: *params,
-		serverHandler:   serverHandler,
+		WSParameter:   *params,
+		serverHandler: serverHandler,
 		upgrader: &websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

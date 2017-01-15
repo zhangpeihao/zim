@@ -11,6 +11,7 @@ import (
 	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 // RootCmd root命令
@@ -46,6 +47,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVarP(&cfgDebug, "debug", "d", false, "debug mode. runtime profiling data at: htpp://localhost:8766/debug/pprof")
 	RootCmd.PersistentFlags().StringVar(&cfgVmodule, "vmodule", "", "vmodule for glog")
 	RootCmd.PersistentFlags().StringVar(&cfgLogDir, "log_dir", "", "log path")
+	RootCmd.PersistentFlags().IntVar(&cfgLogLevel, "log_level", 3, "log level (0: info, 1: warning, 2: error, 3:fatal)")
 	RootCmd.PersistentFlags().IntVar(&cfgCPU, "cpu", 1, "the number of logical CPUs used by the current process")
 }
 
@@ -76,6 +78,8 @@ func initConfig() {
 			cfgVerbose = viper.GetBool("verbose")
 		}
 	}
+
+	flag.Set("v", strconv.Itoa(cfgLogLevel))
 
 	if cfgVerbose {
 		jww.SetStdoutThreshold(jww.LevelTrace)

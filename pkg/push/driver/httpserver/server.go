@@ -19,8 +19,8 @@ const (
 	ServerName = "push-httpserver"
 )
 
-// Parameter 参数
-type Parameter struct {
+// PushHTTPServerParameter 参数
+type PushHTTPServerParameter struct {
 	// BindAddress 绑定地址
 	BindAddress string
 	// Debug 调试模式
@@ -29,8 +29,8 @@ type Parameter struct {
 
 // Server 推送服务
 type Server struct {
-	// Parameter 参数
-	Parameter
+	// PushHTTPServerParameter 参数
+	PushHTTPServerParameter
 	// handler 回调接口
 	handler push.Handler
 	// closer 安全退出锁
@@ -42,11 +42,11 @@ type Server struct {
 }
 
 // NewServer 新建服务
-func NewServer(params *Parameter, handler push.Handler) (srv *Server, err error) {
+func NewServer(params *PushHTTPServerParameter, handler push.Handler) (srv *Server, err error) {
 	glog.Infoln("push::driver::httpserver::NewServer")
 	srv = &Server{
-		Parameter: *params,
-		handler:   handler,
+		PushHTTPServerParameter: *params,
+		handler:                 handler,
 	}
 	srv.httpServer = &http.Server{Handler: srv}
 	if srv.Debug {
