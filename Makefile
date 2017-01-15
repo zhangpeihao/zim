@@ -90,6 +90,9 @@ run_stub: build
 run_gateway: build
 	@nohup ./zim gateway --config=./test/gateway.yaml > ./test/gateway.log 2>&1 &
 
+debug_gateway: build
+	@nohup ./zim gateway -d --config=./test/gateway.yaml > ./test/gateway.log 2>&1 &
+
 run_gateway_touch: run_gateway
 	tail -f ./test/gateway.log
 

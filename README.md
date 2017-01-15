@@ -9,7 +9,9 @@
 
 IM service
 
+## Demo
 
+[Demo](https://zimcloud.github.io/)
 
 ## Auth&Login
 

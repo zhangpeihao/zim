@@ -8,7 +8,7 @@ import (
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
-	"html/template"
+	"text/template"
 	"net"
 	"net/http"
 	"strings"
@@ -165,6 +165,8 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // HandleWebSocket 处理HTTP链接
 func (srv *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	glog.Infoln("websocket::Server::HandleWebSocket()")
+	// Get token
+	glog.Infoln("token: ", r.Header.Get("token"))
 	// Upgrade到WebSocket连接
 	c, err := srv.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -218,79 +220,30 @@ func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
 
 var homeTemplate = template.Must(template.New("").Parse(`
 <!DOCTYPE html>
-<head>
-<meta charset="utf-8">
-<script>
-window.addEventListener("load", function(evt) {
-    var output = document.getElementById("output");
-    var input = document.getElementById("input");
-    var ws;
-    var print = function(message) {
-        var d = document.createElement("div");
-        d.innerHTML = message;
-        output.appendChild(d);
-    };
-    document.getElementById("open").onclick = function(evt) {
-        if (ws) {
-            return false;
-        }
-        ws = new WebSocket("{{.}}");
-        ws.onopen = function(evt) {
-            print("OPEN");
-        }
-        ws.onclose = function(evt) {
-            print("CLOSE");
-            ws = null;
-        }
-        ws.onmessage = function(evt) {
-            print("RESPONSE: " + evt.data);
-        }
-        ws.onerror = function(evt) {
-            print("ERROR: " + evt.data);
-        }
-        return false;
-    };
-    document.getElementById("send").onclick = function(evt) {
-        if (!ws) {
-            return false;
-        }
-        print("SEND: " + input.value);
-        ws.send(input.value);
-        return false;
-    };
-    document.getElementById("close").onclick = function(evt) {
-        if (!ws) {
-            return false;
-        }
-        ws.close();
-        return false;
-    };
-});
-</script>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>zim Demo</title>
+    <link rel="stylesheet" href="//zimcloud.github.io/static/vendor/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="//zimcloud.github.io/static/css/demo.css">
 </head>
 <body>
-<table>
-<tr><td valign="top" width="50%">
-<p>点击"连接"按钮建立WebSocket连接
-<p>点击"关闭"按钮断开连接
-<p>在文本框中输入信令内容，点击"发送"按钮，发送信令
-<p>
-<form>
-<button id="open">连接</button>
-<button id="close">关闭</button>
-<p>
-<textarea id="input" rows="5" cols="50"/>
-t1
-test
-login
-{"id":"123","timestamp":1234567,"token":"E6B8D4E28E8DF1C331460DE60D9792FF"}
-payload
-</textarea>
-<button id="send">Send</button>
-</form>
-</td><td valign="top" width="50%">
-<div id="output"></div>
-</td></tr></table>
+    <div id="container" class="container">
+        <div id="log"></div>
+        <form id="form" action="" class="form-inline">
+            <div id="controllers">
+                <div id="controller-text">
+                    <input type="text" id="msg" class="form-control" size="60" />
+                </div>
+                <div id="controller-submit">
+                    <button type="submit" class="btn btn-success">Send</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <script type="text/javascript" src="//zimcloud.github.io/static/vendor/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="//zimcloud.github.io/static/js/zim.js"></script>
+    <script type="text/javascript" src="//zimcloud.github.io/static/js/demo.js"></script>
 </body>
 </html>
 `))

@@ -134,7 +134,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 	appConfig, ok := srv.apps[command.AppID]
 	if !ok {
 		glog.Warningln("gateway::Server::OnReceivedCommand() No application found",
-			command.Name)
+			command.AppID)
 		conn.Close(false)
 		return define.ErrKnownApp
 	}
@@ -153,6 +153,12 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 				command.Name, err)
 			return define.ErrNeedAuth
 		}
+		glog.Infof("gateway::Server::OnReceivedCommand() login: %+v\n", loginCmd)
+	}
+
+	if len(loginCmd.UserID) == 0 {
+		glog.Warningf("gateway::Server::OnReceivedCommand() login userID is empty\n")
+		return define.ErrAuthFailed
 	}
 
 	// Route
@@ -163,7 +169,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		return
 	}
 
-	resp, err := ink.Invoke(conn.UserID(), command)
+	resp, err := ink.Invoke(loginCmd.UserID, command)
 	if err != nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
 			command.Name, err)
