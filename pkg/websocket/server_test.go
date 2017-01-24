@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/util/rand"
 	"sync"
@@ -51,7 +52,7 @@ func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *p
 	conn.LoginSuccess(command.AppID, "123", "web")
 	fmt.Printf("connection(%s, %s, %s, %s)\n", conn.ID(), conn.UserID(), conn.AppID(), conn.DeviceID())
 	if !conn.IsLogin() {
-		fmt.Printf("Login state error")
+		fmt.Println("Login state error")
 	}
 	conn.Send(command)
 	return nil

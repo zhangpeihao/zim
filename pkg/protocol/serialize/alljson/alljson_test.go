@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"io"
 	"reflect"
 	"testing"
 )
@@ -22,72 +21,6 @@ type TestCopyCase struct {
 	SrcJSON string
 	Dest    interface{}
 	Expect  interface{}
-}
-
-func InterfaceCompare(this, that interface{}) int {
-	thisStr, err := json.Marshal(this)
-	if err != nil {
-		return -1
-	}
-	thatStr, err := json.Marshal(that)
-	if err != nil {
-		return -1
-	}
-	if bytes.Equal(thisStr, thatStr) {
-		return 0
-	}
-	return 1
-}
-
-func TestCopy(t *testing.T) {
-	testCases := []TestCopyCase{
-		{
-			`{"data":{"userid":"123","timestamp":123456,"token":"54321"}}`,
-			&protocol.GatewayLoginCommand{},
-			&protocol.GatewayLoginCommand{
-				UserID:    "123",
-				Timestamp: 123456,
-				Token:     "54321",
-			},
-		},
-		{
-			`{"data":{"userid":"","timestamp":0,"token":""}}`,
-			&protocol.GatewayLoginCommand{},
-			&protocol.GatewayLoginCommand{
-				UserID:    "",
-				Timestamp: 0,
-				Token:     "",
-			},
-		},
-		{
-			`{"data":{}}`,
-			&protocol.GatewayLoginCommand{},
-			&protocol.GatewayLoginCommand{
-				UserID:    "",
-				Timestamp: 0,
-				Token:     "",
-			},
-		},
-	}
-
-	for index, testCase := range testCases {
-		var src JSONData
-		err := json.Unmarshal([]byte(testCase.SrcJSON), &src)
-		if err != nil {
-			t.Errorf("Test case[%d] json unmarshal error: %s\n", index, err)
-			continue
-		}
-		err = Copy(src.Data, testCase.Dest)
-		if err != nil {
-			t.Errorf("Test case[%d] reflectIt error: %s\n", index, err)
-			continue
-		}
-		if InterfaceCompare(testCase.Dest, testCase.Expect) != 0 {
-			t.Errorf("Test case[%d] InterfaceCompare return 0 testCase.Dest: %+v, testCase.Expect: %+v\n",
-				index, testCase.Dest, testCase.Expect)
-			continue
-		}
-	}
 }
 
 type TestCase struct {
@@ -165,17 +98,6 @@ func TestAllJson(t *testing.T) {
 				index+1, testCase.Message, cmd, testCase.ExpectCommand)
 		}
 
-		cmd, err = ParseReader(bytes.NewBuffer(testCase.Message))
-		if err != nil {
-			t.Errorf("TestAllJson Case[%d]\nParse %s error: %s",
-				index+1, testCase.Message, err)
-			continue
-		}
-		if !testCase.ExpectCommand.Equal(cmd) {
-			t.Errorf("TestAllJson Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index+1, testCase.Message, cmd, testCase.ExpectCommand)
-		}
-
 		buf, err := Compose(cmd)
 		if err != nil {
 			t.Errorf("TestAllJson Case[%d] error: %s\n", index+1, err)
@@ -227,26 +149,5 @@ func TestError(t *testing.T) {
 			t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
 				index+1, testCase.Message, reflect.TypeOf(err), testCase.Error)
 		}
-	}
-}
-
-type TestReader struct{}
-
-func (r *TestReader) Read(p []byte) (int, error) {
-	return 0, errors.New("Error")
-}
-
-func TestParseReaderError(t *testing.T) {
-	var (
-		r   io.Reader
-		err error
-	)
-	_, err = ParseReader(r)
-	if err == nil {
-		t.Error("ParseReader(nil) should return error")
-	}
-	_, err = ParseReader(new(TestReader))
-	if err == nil {
-		t.Error("ParseReader(TestReader) should return error")
 	}
 }

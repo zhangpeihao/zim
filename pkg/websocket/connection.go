@@ -8,7 +8,6 @@ import (
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 )
 
 var (
@@ -89,9 +88,9 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 			err = define.ErrUnsupportProtocol
 			return nil, err
 		}
-		cmd, err = plaintext.Parse(message)
+		cmd, err = serialize.Parse(message)
 		if err != nil {
-			glog.Warningf("websocket::connection::ReadCommand() plaintext.Parse error: %s\n", err)
+			glog.Warningf("websocket::connection::ReadCommand() serialize.Parse error: %s\n", err)
 			return nil, err
 		}
 	}

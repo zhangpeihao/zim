@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"os"

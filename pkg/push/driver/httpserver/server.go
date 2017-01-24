@@ -4,7 +4,7 @@ package httpserver
 
 import (
 	"github.com/golang/glog"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"github.com/zhangpeihao/zim/pkg/push"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"html/template"
@@ -124,7 +124,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (srv *Server) HandlePush2User(w http.ResponseWriter, r *http.Request) {
 	glog.Infoln("push::driver::httpserver::Server::HandlePush2User()")
 
-	cmd, err := plaintext.ParseReader(r.Body)
+	cmd, err := serialize.ParseReader(r.Body)
 	if err != nil {
 		glog.Warningln("push::driver::httpserver::Server::HandlePush2User() ParseReader error: ", err)
 		w.WriteHeader(500)

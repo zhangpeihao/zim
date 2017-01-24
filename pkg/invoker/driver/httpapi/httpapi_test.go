@@ -6,7 +6,8 @@ import (
 	"flag"
 	"github.com/jarcoal/httpmock"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
+	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"testing"
 )
 
@@ -86,7 +87,7 @@ bar`, true},
 			continue
 		}
 		if len(testCase.StubResponseData) > 0 {
-			expectResp, err := plaintext.Parse([]byte(testCase.StubResponseData))
+			expectResp, err := serialize.Parse([]byte(testCase.StubResponseData))
 			if err != nil {
 				t.Fatalf("TestError Case[%d]\nparse expect response error: %s\n", index+1, err)
 			}

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"io"
 	"reflect"
 	"testing"
 )
@@ -104,17 +103,6 @@ foo bar`),
 				index+1, testCase.Message, cmd, testCase.ExpectCommand)
 		}
 
-		cmd, err = ParseReader(bytes.NewBuffer(testCase.Message))
-		if err != nil {
-			t.Errorf("TestPlainText Case[%d]\nParse %s error: %s",
-				index+1, testCase.Message, err)
-			continue
-		}
-		if !testCase.ExpectCommand.Equal(cmd) {
-			t.Errorf("TestPlainText Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index+1, testCase.Message, cmd, testCase.ExpectCommand)
-		}
-
 		buf, err := Compose(cmd)
 		if err != nil {
 			t.Errorf("TestPlainText Case[%d] error: %s\n", index+1, err)
@@ -196,26 +184,5 @@ foo bar`),
 			t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
 				index+1, testCase.Message, reflect.TypeOf(err), testCase.Error)
 		}
-	}
-}
-
-type TestReader struct{}
-
-func (r *TestReader) Read(p []byte) (int, error) {
-	return 0, errors.New("Error")
-}
-
-func TestParseReaderError(t *testing.T) {
-	var (
-		r   io.Reader
-		err error
-	)
-	_, err = ParseReader(r)
-	if err == nil {
-		t.Error("ParseReader(nil) should return error")
-	}
-	_, err = ParseReader(new(TestReader))
-	if err == nil {
-		t.Error("ParseReader(TestReader) should return error")
 	}
 }

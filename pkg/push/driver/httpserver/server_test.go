@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"flag"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"testing"
