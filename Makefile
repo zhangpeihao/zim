@@ -113,11 +113,11 @@ fmt:
 
 # lint
 lint:
-	@for pkg in $(PACKAGES); do golint $$pkg; done
+	@for pkg in $(PACKAGES); do golint -set_exit_status $$pkg || exit 1; done
 
 # vet
 vet:
-	@for pkg in $(PACKAGES); do go vet $$pkg; done
+	@for pkg in $(PACKAGES); do go vet $$pkg || exit 1; done
 
 # test
 test:

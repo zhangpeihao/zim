@@ -65,7 +65,7 @@ foo bar`),
 			[]byte(`t1
 test
 p2u
-{"useridlist":""}
+{}
 foo bar`),
 			protocol.Command{
 				Version: "t1",

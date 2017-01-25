@@ -3,11 +3,35 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "C1BwfmTAUmldO4V3++tvYWzT49Y=",
+			"path": "github.com/boltdb/bolt",
+			"revision": "dfb21201d9270c1082d5fb0f07f500311ff72f18",
+			"revisionTime": "2016-05-16T15:40:46Z"
+		},
+		{
 			"checksumSHA1": "OFu4xJEIjiI8Suu+j/gabfp+y6Q=",
 			"origin": "github.com/stretchr/testify/vendor/github.com/davecgh/go-spew/spew",
 			"path": "github.com/davecgh/go-spew/spew",
 			"revision": "18a02ba4a312f95da08ff4cfc0055750ce50ae9e",
 			"revisionTime": "2016-11-17T07:43:51Z"
+		},
+		{
+			"checksumSHA1": "iI+sxLi0ePLAhK3nhmcxZWlVHvY=",
+			"path": "github.com/docker/libkv",
+			"revision": "1d8431073ae03cdaedb198a89722f3aab6d418ef",
+			"revisionTime": "2016-11-09T01:06:21Z"
+		},
+		{
+			"checksumSHA1": "f0riXTSoNiWTnXkQCUtXC9TwouM=",
+			"path": "github.com/docker/libkv/store",
+			"revision": "1d8431073ae03cdaedb198a89722f3aab6d418ef",
+			"revisionTime": "2016-11-09T01:06:21Z"
+		},
+		{
+			"checksumSHA1": "9eTlos2QOnGtYOsTkzmbmyTEMy8=",
+			"path": "github.com/docker/libkv/store/boltdb",
+			"revision": "1d8431073ae03cdaedb198a89722f3aab6d418ef",
+			"revisionTime": "2016-11-09T01:06:21Z"
 		},
 		{
 			"checksumSHA1": "hveFTNQ9YEyYRs6SWuXM+XU9qRI=",

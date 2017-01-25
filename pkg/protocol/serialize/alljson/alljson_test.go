@@ -65,7 +65,7 @@ func TestAllJson(t *testing.T) {
 			},
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"p2u","data":{"useridlist":""},"payload":"%s"}`, base64Payload)),
+			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"p2u","data":{},"payload":"%s"}`, base64Payload)),
 			protocol.Command{
 				Version: "j1",
 				AppID:   "test",
