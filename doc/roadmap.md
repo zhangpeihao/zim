@@ -13,3 +13,5 @@
 ## 聊天机器人Demo
 
 ## OpenTracing支持
+
+## 完成Kafka, redis, NSQ, cherami-server消息队列的兼容接入

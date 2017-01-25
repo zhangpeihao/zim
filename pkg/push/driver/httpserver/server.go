@@ -4,7 +4,7 @@ package httpserver
 
 import (
 	"github.com/golang/glog"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"github.com/zhangpeihao/zim/pkg/push"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"html/template"
@@ -19,8 +19,8 @@ const (
 	ServerName = "push-httpserver"
 )
 
-// Parameter 参数
-type Parameter struct {
+// PushHTTPServerParameter 参数
+type PushHTTPServerParameter struct {
 	// BindAddress 绑定地址
 	BindAddress string
 	// Debug 调试模式
@@ -29,8 +29,8 @@ type Parameter struct {
 
 // Server 推送服务
 type Server struct {
-	// Parameter 参数
-	Parameter
+	// PushHTTPServerParameter 参数
+	PushHTTPServerParameter
 	// handler 回调接口
 	handler push.Handler
 	// closer 安全退出锁
@@ -42,11 +42,11 @@ type Server struct {
 }
 
 // NewServer 新建服务
-func NewServer(params *Parameter, handler push.Handler) (srv *Server, err error) {
+func NewServer(params *PushHTTPServerParameter, handler push.Handler) (srv *Server, err error) {
 	glog.Infoln("push::driver::httpserver::NewServer")
 	srv = &Server{
-		Parameter: *params,
-		handler:   handler,
+		PushHTTPServerParameter: *params,
+		handler:                 handler,
 	}
 	srv.httpServer = &http.Server{Handler: srv}
 	if srv.Debug {
@@ -87,6 +87,7 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 // Close 退出
 func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("push::driver::httpserver::Server::Close()")
+	defer glog.Warningln("push::driver::httpserver::Server::Close() Done")
 	defer srv.closer.Done(ServerName)
 	// 关闭HTTP服务
 	if srv.listener != nil {
@@ -124,7 +125,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (srv *Server) HandlePush2User(w http.ResponseWriter, r *http.Request) {
 	glog.Infoln("push::driver::httpserver::Server::HandlePush2User()")
 
-	cmd, err := plaintext.ParseReader(r.Body)
+	cmd, err := serialize.ParseReader(r.Body)
 	if err != nil {
 		glog.Warningln("push::driver::httpserver::Server::HandlePush2User() ParseReader error: ", err)
 		w.WriteHeader(500)

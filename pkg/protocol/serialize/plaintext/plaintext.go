@@ -18,8 +18,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"io"
-	"io/ioutil"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"strings"
 )
 
@@ -50,30 +49,29 @@ const (
 	CommandLines = 5
 )
 
-// ParseReader 使用Reader解析信令
-func ParseReader(r io.Reader) (cmd *protocol.Command, err error) {
-	if r == nil {
-		return nil, define.ErrInvalidParameter
+var (
+	serializer *serialize.Serializer = &serialize.Serializer{
+		Version:   Version,
+		ProbeByte: ProbeByte,
+		Parse:     Parse,
+		Compose:   Compose,
 	}
-	var buf []byte
-	buf, err = ioutil.ReadAll(r)
-	if err != nil {
-		glog.Warningln("protocol::serialize::plaintext::ParseReader() json.Unmarshal error:", err)
-		return nil, err
-	}
-	return Parse(buf)
+)
+
+func init() {
+	serialize.Register(serializer)
 }
 
 // Parse 解析信令
 func Parse(message []byte) (cmd *protocol.Command, err error) {
 	if message == nil || len(message) == 0 || message[0] != 't' {
-		glog.Warningln("protocol::serialize::plaintext::ParseReader() message unsupport\n")
+		glog.Warningln("protocol::serialize::plaintext::Parse() message unsupport\n")
 		err = define.ErrUnsupportProtocol
 		return
 	}
 	lines := bytes.SplitN(message, CommandSep, CommandLines)
 	if len(lines) != CommandLines {
-		glog.Warningln("protocol::serialize::plaintext::ParseReader() message has %s lines\n", len(lines))
+		glog.Warningln("protocol::serialize::plaintext::Parse() message has %s lines\n", len(lines))
 		err = protocol.ErrParseFailed
 		return
 	}
@@ -83,40 +81,9 @@ func Parse(message []byte) (cmd *protocol.Command, err error) {
 		Name:    strings.Trim(string(lines[CommandNameLine]), "\r\t "),
 	}
 
-	data := lines[CommandDataLine]
 	cmd.Payload = lines[CommandPayloadLine]
-	if data != nil && len(data) > 0 {
-		switch cmd.FirstPartName() {
-		case protocol.Login:
-			var loginCmd protocol.GatewayLoginCommand
-			if err = json.Unmarshal(data, &loginCmd); err != nil {
-				glog.Warningln("protocol::serialize::plaintext::ParseReader() json.Unmarshal error:", err)
-				break
-			}
-			cmd.Data = &loginCmd
-		case protocol.Close:
-			var closeCmd protocol.GatewayCloseCommand
-			if err = json.Unmarshal(data, &closeCmd); err != nil {
-				glog.Warningln("protocol::serialize::plaintext::ParseReader() json.Unmarshal error:", err)
-				break
-			}
-			cmd.Data = &closeCmd
-		case protocol.Message:
-			var msgCmd protocol.GatewayMessageCommand
-			if err = json.Unmarshal(data, &msgCmd); err != nil {
-				glog.Warningln("protocol::serialize::plaintext::ParseReader() json.Unmarshal error:", err)
-				break
-			}
-			cmd.Data = &msgCmd
-		case protocol.Push2User:
-			var pushCmd protocol.Push2UserCommand
-
-			if err = json.Unmarshal(data, &pushCmd); err != nil {
-				glog.Warningln("protocol::serialize::plaintext::ParseReader() json.Unmarshal error:", err)
-				break
-			}
-			cmd.Data = &pushCmd
-		}
+	if err = cmd.Parse(lines[CommandDataLine]); err != nil {
+		return nil, err
 	}
 	return cmd, err
 }

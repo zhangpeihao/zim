@@ -96,3 +96,41 @@ func (cmd *Command) Copy() *Command {
 		Payload: cmd.Payload,
 	}
 }
+
+// Parse 解析命令
+func (cmd *Command) Parse(data []byte) (err error) {
+	if data != nil && len(data) > 0 {
+		switch cmd.FirstPartName() {
+		case Login:
+			var loginCmd GatewayLoginCommand
+			if err = json.Unmarshal(data, &loginCmd); err != nil {
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &loginCmd
+		case Close:
+			var closeCmd GatewayCloseCommand
+			if err = json.Unmarshal(data, &closeCmd); err != nil {
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &closeCmd
+		case Message:
+			var msgCmd GatewayMessageCommand
+			if err = json.Unmarshal(data, &msgCmd); err != nil {
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &msgCmd
+		case Push2User:
+			var pushCmd Push2UserCommand
+
+			if err = json.Unmarshal(data, &pushCmd); err != nil {
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				break
+			}
+			cmd.Data = &pushCmd
+		}
+	}
+	return err
+}

@@ -2,7 +2,9 @@
 
 package websocket
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestConnection(t *testing.T) {
 

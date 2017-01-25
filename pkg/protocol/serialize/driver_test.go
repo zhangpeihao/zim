@@ -4,9 +4,9 @@ package serialize
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"flag"
+	"github.com/stretchr/testify/assert"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"testing"
@@ -17,74 +17,25 @@ func init() {
 	flag.Set("logtostderr", "true")
 }
 
-type TestParseCase struct {
-	Message       []byte
-	ExpectCommand protocol.Command
-}
-
 func TestParse(t *testing.T) {
-	testCases := []TestParseCase{
-		{
-			[]byte(`t1
-test
-msg/foo/bar
-{"userid":""}
-foo bar`),
-			protocol.Command{
-				Version: "t1",
-				AppID:   "test",
-				Name:    "msg/foo/bar",
-				Data:    &protocol.GatewayMessageCommand{},
-				Payload: []byte("foo bar"),
-			},
+	var err error
+	testSerializer := Serializer{
+		Version:   "test",
+		ProbeByte: '!',
+		Parse: func(message []byte) (cmd *protocol.Command, err error) {
+			return nil, nil
 		},
-		{
-			[]byte(`{"version":"j1","appid":"test","name":"msg/foo/bar","data":{"userid":""},"payload":"` +
-				base64.StdEncoding.EncodeToString([]byte("foo bar")) + `"}`),
-			protocol.Command{
-				Version: "j1",
-				AppID:   "test",
-				Name:    "msg/foo/bar",
-				Data:    &protocol.GatewayMessageCommand{},
-				Payload: []byte("foo bar"),
-			},
+		Compose: func(cmd *protocol.Command) ([]byte, error) {
+			return nil, nil
 		},
 	}
-	for index, testCase := range testCases {
-		cmd, err := Parse(testCase.Message)
-		if err != nil {
-			t.Errorf("TestParse Case[%d]\nParse %s error: %s",
-				index, testCase.Message, err)
-			continue
-		}
-		if !testCase.ExpectCommand.Equal(cmd) {
-			t.Errorf("TestParse Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index, testCase.Message, cmd, testCase.ExpectCommand)
-			continue
-		}
-
-		cmd, err = ParseReader(bytes.NewBuffer(testCase.Message))
-		if err != nil {
-			t.Errorf("TestParse Case[%d]\nParse %s error: %s",
-				index, testCase.Message, err)
-			continue
-		}
-		if !testCase.ExpectCommand.Equal(cmd) {
-			t.Errorf("TestParse Case[%d]\nParse %s\nGot: %s,\nExpect: %s",
-				index, testCase.Message, cmd, testCase.ExpectCommand)
-			continue
-		}
-
-		buf, err := Compose(cmd)
-		if err != nil {
-			t.Errorf("TestParse Case[%d] compose error: %s\n", index, err)
-			continue
-		}
-		if bytes.Compare(buf, testCase.Message) != 0 {
-			t.Errorf("TestParse Case[%d]\nCompose %s\nGot: %s,\nExpect: %s",
-				index, cmd, buf, testCase.Message)
-		}
-	}
+	Register(&testSerializer)
+	_, err = Parse([]byte("!12345"))
+	assert.NoError(t, err)
+	_, err = ParseReader(bytes.NewBufferString("!12345"))
+	assert.NoError(t, err)
+	_, err = Compose(&protocol.Command{Version: "test"})
+	assert.NoError(t, err)
 }
 
 type TestReader struct{}

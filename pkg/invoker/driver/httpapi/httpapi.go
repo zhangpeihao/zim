@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -108,7 +108,7 @@ func (invoker *Invoker) Invoke(userID string, reqCmd *protocol.Command) (respCmd
 		return
 	}
 
-	respCmd, err = plaintext.Parse(rawbody)
+	respCmd, err = serialize.Parse(rawbody)
 	if err != nil {
 		glog.Errorf("invoker::driver::httpapi::Invoke() parse http response error: %s\n", err)
 		return

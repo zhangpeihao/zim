@@ -5,36 +5,31 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/zhangpeihao/zim/pkg/invoker/driver/httpapi"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
-	"github.com/zhangpeihao/zim/pkg/util"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/zhangpeihao/zim/pkg/invoker/driver/httpapi"
+	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 var (
-	userIDQueue = make(chan string, 1000)
-	p2uCommand  = `t1
+	loginCommand = `t1
 test
 p2u
-{"useridlist":"%s"}
-foo bar
+{"tags":"*"}
+{"from":"%s","msg":"user %s enter"}
 `
-)
-
-var (
-	loginResponse = &protocol.Command{
-		Version: "t1",
-		AppID:   cfgAppID,
-		Name:    "login",
-		Data:    nil,
-		Payload: []byte("foo bar"),
-	}
+	msgCommand = `t1
+test
+p2u
+{"tags":"*"}
+{"from":"%s","msg":"%s"}
+`
 )
 
 // stubCmd represents the stub command
@@ -78,35 +73,35 @@ func init() {
 
 // HandleLogin 登入处理
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	userID := r.Header.Get(httpapi.HeaderUserID)
 	appID := r.Header.Get(httpapi.HeaderAppID)
 	log.Printf("HandleLogin(%s, %s)\n", userID, appID)
 	w.WriteHeader(200)
-	msg, err := serialize.Compose(loginResponse)
-	if err != nil {
-		w.WriteHeader(500)
-	} else {
-		w.Write(msg)
-	}
+	w.Write([]byte(fmt.Sprintf(loginCommand, "system", userID)))
 }
 
 // HandleMsg 消息处理
 func HandleMsg(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	userID := r.Header.Get(httpapi.HeaderUserID)
 	appID := r.Header.Get(httpapi.HeaderAppID)
 
 	if len(userID) == 0 {
 		w.WriteHeader(400)
-		log.Printf("HandleMsg() plaintext.ParseReader no %s header\n", httpapi.HeaderUserID)
+		log.Printf("HandleMsg() no %s header\n", httpapi.HeaderUserID)
 		return
 	}
 	if len(appID) == 0 {
 		w.WriteHeader(400)
-		log.Printf("HandleMsg() plaintext.ParseReader no %s header\n", httpapi.HeaderAppID)
+		log.Printf("HandleMsg() no %s header\n", httpapi.HeaderAppID)
 		return
 	}
-
-	userIDQueue <- userID
-	toUserID := <-userIDQueue
-	w.Write([]byte(fmt.Sprintf(p2uCommand, toUserID)))
+	payload, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(400)
+		log.Printf("HandleMsg() read error: %s\n", err.Error())
+		return
+	}
+	w.Write([]byte(fmt.Sprintf(msgCommand, userID, string(payload))))
 }

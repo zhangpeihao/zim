@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"flag"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"testing"
@@ -28,7 +29,7 @@ func (handler *TestHandler) OnPushToUser(data *protocol.Command) {
 
 func TestServer(t *testing.T) {
 	handler := new(TestHandler)
-	s, err := NewServer(&Parameter{
+	s, err := NewServer(&PushHTTPServerParameter{
 		BindAddress: ":12343",
 	}, handler)
 	if err != nil {

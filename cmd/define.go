@@ -10,20 +10,7 @@ import (
 
 var (
 	// Root 参数
-	cfgFile    string
-	cfgVerbose bool
-	cfgVmodule string
-	cfgLogDir  string
-	cfgDebug   bool
-	cfgCPU     int
-
-	// Gateway 参数
-	cfgWebSocketBindAddress string
-	cfgWssBindAddress       string
-	cfgPushBindAddress      string
-	cfgAppConfigs           []string
-	cfgCertFile             string
-	cfgKeyFile              string
+	cfgFile string
 
 	// stress client 参数
 	cfgWebSocketURL     string
