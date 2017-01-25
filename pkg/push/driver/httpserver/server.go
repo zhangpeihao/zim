@@ -87,6 +87,7 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 // Close 退出
 func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("push::driver::httpserver::Server::Close()")
+	defer glog.Warningln("push::driver::httpserver::Server::Close() Done")
 	defer srv.closer.Done(ServerName)
 	// 关闭HTTP服务
 	if srv.listener != nil {

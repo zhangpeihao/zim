@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -13,29 +14,21 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/zhangpeihao/zim/pkg/invoker/driver/httpapi"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 var (
 	loginCommand = `t1
 test
-p2t
+p2u
 {"tags":"*"}
-{"from":"%s","msg":"%s enter"}
+{"from":"%s","msg":"user %s enter"}
 `
 	msgCommand = `t1
 test
-p2t
+p2u
 {"tags":"*"}
 {"from":"%s","msg":"%s"}
-`
-	logoutCommand = `t1
-test
-p2t
-{"tags":"*"}
-{"from":"%s","msg":"%s leave"}
 `
 )
 
@@ -80,15 +73,17 @@ func init() {
 
 // HandleLogin 登入处理
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	userID := r.Header.Get(httpapi.HeaderUserID)
 	appID := r.Header.Get(httpapi.HeaderAppID)
 	log.Printf("HandleLogin(%s, %s)\n", userID, appID)
 	w.WriteHeader(200)
-	w.Write([]byte(fmt.Sprintf(loginCommand, userID)))
+	w.Write([]byte(fmt.Sprintf(loginCommand, "system", userID)))
 }
 
 // HandleMsg 消息处理
 func HandleMsg(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	userID := r.Header.Get(httpapi.HeaderUserID)
 	appID := r.Header.Get(httpapi.HeaderAppID)
 
@@ -102,5 +97,11 @@ func HandleMsg(w http.ResponseWriter, r *http.Request) {
 		log.Printf("HandleMsg() no %s header\n", httpapi.HeaderAppID)
 		return
 	}
-	w.Write([]byte(fmt.Sprintf(msgCommand, appID)))
+	payload, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(400)
+		log.Printf("HandleMsg() read error: %s\n", err.Error())
+		return
+	}
+	w.Write([]byte(fmt.Sprintf(msgCommand, userID, string(payload))))
 }
