@@ -96,10 +96,15 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 // Close 退出
 func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("gateway::Server::Close()")
+	defer glog.Warningln("gateway::Server::Close() Done")
 	defer srv.closer.Done(ServerName)
 	// 关闭WebSocket服务
 	if err = srv.wsServer.Close(timeout); err != nil {
 		glog.Errorln("gateway::Server::Close() websocket server close error:", err)
+	}
+	// 关闭Push server
+	if err = srv.pushServer.Close(timeout); err != nil {
+		glog.Errorln("gateway::Server::Close() push server close error:", err)
 	}
 	// 关闭所有链接
 	srv.Lock()
@@ -134,6 +139,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 	var (
 		loginCmd *protocol.GatewayLoginCommand
 		ok       bool
+		resp     *protocol.Command
 	)
 	appConfig, ok := srv.apps[command.AppID]
 	if !ok {
@@ -142,15 +148,23 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		conn.Close(false)
 		return define.ErrKnownApp
 	}
+
+	// Route
+	ink := appConfig.Router.Find(command.Name)
+	if ink == nil {
+		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
+		return define.ErrAuthFailed
+	}
+
 	// 检查登入
-	if command.Name != protocol.Login {
-		if !conn.IsLogin() {
+	if !conn.IsLogin() {
+		if command.Name != protocol.Login {
 			glog.Warningln("gateway::Server::OnReceivedCommand() first command must be login! got:",
 				command.Name)
 			conn.Close(false)
 			return define.ErrUnsupportProtocol
 		}
-	} else {
+
 		loginCmd, ok = command.Data.(*protocol.GatewayLoginCommand)
 		if !ok {
 			glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
@@ -158,30 +172,23 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 			return define.ErrNeedAuth
 		}
 		glog.Infof("gateway::Server::OnReceivedCommand() login: %+v\n", loginCmd)
+		resp, err = ink.Invoke(loginCmd.UserID, command)
+	} else {
+		resp, err = ink.Invoke(conn.UserID(), command)
 	}
 
-	if len(loginCmd.UserID) == 0 {
-		glog.Warningf("gateway::Server::OnReceivedCommand() login userID is empty\n")
-		return define.ErrAuthFailed
-	}
-
-	// Route
-	ink := appConfig.Router.Find(command.Name)
-
-	if ink == nil {
-		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
-		return
-	}
-
-	resp, err := ink.Invoke(loginCmd.UserID, command)
 	if err != nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
 			command.Name, err)
-		return
+		return define.ErrAuthFailed
+	}
+	if resp.Name == protocol.Close {
+		glog.Warningln("gateway::Server::OnReceivedCommand() invoke response close")
+		conn.Close(false)
+		return define.ErrAuthFailed
 	}
 
-	if loginCmd != nil {
-		// Todo: Parse response
+	if !conn.IsLogin() {
 		conn.LoginSuccess(command.AppID, loginCmd.UserID, loginCmd.DeviceID)
 		connid := conn.ID()
 		srv.Lock()
@@ -209,15 +216,9 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		}
 	}
 
-	if resp == nil {
-		return
-	}
-
 	glog.Infof("gateway::Server::OnReceivedCommand() invoke(%s) response %s",
 		command.Name, resp)
-	if resp.Name == protocol.Push2User {
-		srv.OnPushToUser(resp)
-	}
+	go srv.OnPushToUser(resp)
 	return
 }
 
@@ -236,15 +237,27 @@ func (srv *Server) OnPushToUser(cmd *protocol.Command) {
 
 	touser := cmd.Copy()
 	touser.Data = nil
+
+	// Todo: Find user by id and tag
+	// Todo: Lockfree
 	srv.Lock()
-	for _, id := range strings.Split(pushCmd.UserIDList, ",") {
-		connections, ok := srv.connections[define.ConnectionID(cmd.AppID, id)]
-		if ok {
+	if pushCmd.Tags == "*" {
+		// Push to all users
+		for _, connections := range srv.connections {
 			for _, conn := range connections {
 				conn.Send(touser)
 			}
-		} else {
-			glog.Warningf("gateway::Server::OnPushToUser() not find connection")
+		}
+	} else {
+		for _, id := range strings.Split(pushCmd.UserIDList, ",") {
+			connections, ok := srv.connections[define.ConnectionID(cmd.AppID, id)]
+			if ok {
+				for _, conn := range connections {
+					conn.Send(touser)
+				}
+			} else {
+				glog.Warningf("gateway::Server::OnPushToUser() not find connection")
+			}
 		}
 	}
 	srv.Unlock()

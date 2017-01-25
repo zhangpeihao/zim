@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,18 +35,18 @@ var gatewayCmd = &cobra.Command{
 		// 构建Gateway服务
 		gatewaySrv, err = gateway.NewServer(&gateway.ServerParameter{
 			WSParameter: websocket.WSParameter{
-				WSBindAddress:  cfgWebSocketBindAddress,
-				WSSBindAddress: cfgWssBindAddress,
-				Debug:          cfgDebug,
-				CertFile:       cfgCertFile,
-				KeyFile:        cfgKeyFile,
+				WSBindAddress:  viper.GetString("gateway.ws-bind"),
+				WSSBindAddress: viper.GetString("gateway.wss-bind"),
+				Debug:          viper.GetBool("debug"),
+				CertFile:       viper.GetString("gateway.wss-cert-file"),
+				KeyFile:        viper.GetString("gateway.wss-key-file"),
 			},
 			PushHTTPServerParameter: httpserver.PushHTTPServerParameter{
-				BindAddress: cfgPushBindAddress,
-				Debug:       cfgDebug,
+				BindAddress: viper.GetString("gateway.push-bind"),
+				Debug:       viper.GetBool("debug"),
 			},
 			Key:        protocol.Key(cfgKey),
-			AppConfigs: cfgAppConfigs,
+			AppConfigs: viper.GetStringSlice("gateway.app-config"),
 		})
 		if err != nil {
 			glog.Errorln("Gateway.NewServer() error:", err)
@@ -72,24 +71,22 @@ var gatewayCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(gatewayCmd)
-	cobra.OnInitialize(initGatewayConfig)
 
-	gatewayCmd.PersistentFlags().StringVar(&cfgWebSocketBindAddress, "ws-bind", ":8870", "WebSocket服务绑定地址")
-	gatewayCmd.PersistentFlags().StringVar(&cfgWssBindAddress, "wss-bind", ":8872", "WebSocket加密服务绑定地址")
-	gatewayCmd.PersistentFlags().StringVar(&cfgPushBindAddress, "push-bind", ":8871", "推送服务绑定地址")
-	gatewayCmd.PersistentFlags().StringSliceVar(&cfgAppConfigs, "app-config", nil, "应用配置文件.")
-	gatewayCmd.PersistentFlags().StringVar(&cfgCertFile, "wss-cert-file", "", "WebSocket加密服务证书文件路径")
-	gatewayCmd.PersistentFlags().StringVar(&cfgKeyFile, "wss-key-file", "", "WebSocket加密服务密钥文件路径")
+	gatewayCmd.PersistentFlags().String("ws-bind", ":8870", "WebSocket服务绑定地址")
+	viper.BindPFlag("gateway.ws-bind", gatewayCmd.PersistentFlags().Lookup("ws-bind"))
 
-}
+	gatewayCmd.PersistentFlags().String("wss-bind", ":8872", "WebSocket加密服务绑定地址")
+	viper.BindPFlag("gateway.wss-bind", gatewayCmd.PersistentFlags().Lookup("wss-bind"))
 
-func initGatewayConfig() {
-	fmt.Println("initGatewayConfig")
-	initConfig()
+	gatewayCmd.PersistentFlags().String("push-bind", ":8871", "推送服务绑定地址")
+	viper.BindPFlag("gateway.push-bind", gatewayCmd.PersistentFlags().Lookup("push-bind"))
 
-	if viper.InConfig("gateway") {
-		cfgAppConfigs = viper.GetStringSlice("gateway.app-config")
-		cfgCertFile = viper.GetString("gateway.wss-cert-file")
-		cfgKeyFile = viper.GetString("gateway.wss-key-file")
-	}
+	gatewayCmd.PersistentFlags().StringSlice("app-config", nil, "应用配置文件.")
+	viper.BindPFlag("gateway.app-config", gatewayCmd.PersistentFlags().Lookup("app-config"))
+
+	gatewayCmd.PersistentFlags().String("wss-cert-file", "", "WebSocket加密服务证书文件路径")
+	viper.BindPFlag("gateway.wss-cert-file", gatewayCmd.PersistentFlags().Lookup("wss-cert-file"))
+
+	gatewayCmd.PersistentFlags().String("wss-key-file", "", "WebSocket加密服务密钥文件路径")
+	viper.BindPFlag("gateway.wss-key-file", gatewayCmd.PersistentFlags().Lookup("wss-key-file"))
 }

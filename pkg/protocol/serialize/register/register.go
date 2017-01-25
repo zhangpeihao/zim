@@ -3,6 +3,7 @@
 package register
 
 import (
+	// Register alljson serializer
 	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/alljson"
 	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/plaintext"
 )
