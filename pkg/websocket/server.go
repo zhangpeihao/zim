@@ -5,6 +5,7 @@ package websocket
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
@@ -55,10 +56,16 @@ type Server struct {
 }
 
 // NewServer 新建一个WebSocket服务实例
-func NewServer(params *WSParameter, serverHandler define.ServerHandler) (srv *Server, err error) {
+func NewServer(serverHandler define.ServerHandler) (srv *Server, err error) {
 	glog.Infoln("websocket::NewServer")
 	srv = &Server{
-		WSParameter:   *params,
+		WSParameter: WSParameter{
+			WSBindAddress:  viper.GetString("gateway.ws-bind"),
+			WSSBindAddress: viper.GetString("gateway.wss-bind"),
+			Debug:          viper.GetBool("debug"),
+			CertFile:       viper.GetString("gateway.wss-cert-file"),
+			KeyFile:        viper.GetString("gateway.wss-key-file"),
+		},
 		serverHandler: serverHandler,
 		upgrader: &websocket.Upgrader{
 			ReadBufferSize:  1024,

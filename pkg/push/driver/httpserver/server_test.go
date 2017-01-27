@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"testing"
 	"time"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -29,9 +30,8 @@ func (handler *TestHandler) OnPushToUser(data *protocol.Command) {
 
 func TestServer(t *testing.T) {
 	handler := new(TestHandler)
-	s, err := NewServer(&PushHTTPServerParameter{
-		BindAddress: ":12343",
-	}, handler)
+	viper.Set("gateway.push-bind", ":12343")
+	s, err := NewServer(handler)
 	if err != nil {
 		t.Fatal("NewServer error:", err)
 	}

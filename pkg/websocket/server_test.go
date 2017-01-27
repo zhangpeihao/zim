@@ -16,6 +16,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -62,12 +63,11 @@ func TestServer(t *testing.T) {
 	handler := new(TestHandler)
 	wsPort := rand.IntnRange(12300, 32300)
 	wssPort := wsPort + 1
-	s, err := NewServer(&WSParameter{
-		WSBindAddress:  fmt.Sprintf(":%d", wsPort),
-		WSSBindAddress: fmt.Sprintf(":%d", wssPort),
-		CertFile:       "./httpcert/cert.pem",
-		KeyFile:        "./httpcert/key.pem",
-	}, handler)
+	viper.Set("gateway.ws-bind", fmt.Sprintf(":%d", wsPort))
+	viper.Set("gateway.wss-bind", fmt.Sprintf(":%d", wssPort))
+	viper.Set("gateway.wss-cert-file", "./httpcert/cert.pem")
+	viper.Set("gateway.wss-key-file", "./httpcert/key.pem")
+	s, err := NewServer(handler)
 	if err != nil {
 		t.Fatal("NewServer error:", err)
 	}

@@ -4,6 +4,7 @@ package gateway
 
 import (
 	"github.com/golang/glog"
+	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/app"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
@@ -24,8 +25,6 @@ const (
 type ServerParameter struct {
 	websocket.WSParameter
 	httpserver.PushHTTPServerParameter
-	// Key 验证密钥
-	Key protocol.Key
 	// AppConfigs 应用配置
 	AppConfigs []string
 }
@@ -49,18 +48,20 @@ type Server struct {
 }
 
 // NewServer 新建服务
-func NewServer(params *ServerParameter) (srv *Server, err error) {
+func NewServer() (srv *Server, err error) {
 	glog.Infoln("gateway::NewServer()")
 	srv = &Server{
-		ServerParameter: *params,
-		connections:     make(map[string][]define.Connection),
-		apps:            make(map[string]*app.App),
+		ServerParameter: ServerParameter{
+			AppConfigs: viper.GetStringSlice("gateway.app-config"),
+		},
+		connections: make(map[string][]define.Connection),
+		apps:        make(map[string]*app.App),
 	}
-	srv.wsServer, err = websocket.NewServer(&srv.ServerParameter.WSParameter, srv)
+	srv.wsServer, err = websocket.NewServer(srv)
 	if err != nil {
 		return nil, err
 	}
-	srv.pushServer, err = httpserver.NewServer(&srv.ServerParameter.PushHTTPServerParameter, srv)
+	srv.pushServer, err = httpserver.NewServer(srv)
 	if err != nil {
 		return nil, err
 	}

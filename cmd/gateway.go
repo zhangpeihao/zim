@@ -8,10 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/gateway"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
 	"github.com/zhangpeihao/zim/pkg/util"
-	"github.com/zhangpeihao/zim/pkg/websocket"
 	"time"
 )
 
@@ -33,21 +30,7 @@ var gatewayCmd = &cobra.Command{
 		)
 		glog.Infoln("gateway run")
 		// 构建Gateway服务
-		gatewaySrv, err = gateway.NewServer(&gateway.ServerParameter{
-			WSParameter: websocket.WSParameter{
-				WSBindAddress:  viper.GetString("gateway.ws-bind"),
-				WSSBindAddress: viper.GetString("gateway.wss-bind"),
-				Debug:          viper.GetBool("debug"),
-				CertFile:       viper.GetString("gateway.wss-cert-file"),
-				KeyFile:        viper.GetString("gateway.wss-key-file"),
-			},
-			PushHTTPServerParameter: httpserver.PushHTTPServerParameter{
-				BindAddress: viper.GetString("gateway.push-bind"),
-				Debug:       viper.GetBool("debug"),
-			},
-			Key:        protocol.Key(cfgKey),
-			AppConfigs: viper.GetStringSlice("gateway.app-config"),
-		})
+		gatewaySrv, err = gateway.NewServer()
 		if err != nil {
 			glog.Errorln("Gateway.NewServer() error:", err)
 			return

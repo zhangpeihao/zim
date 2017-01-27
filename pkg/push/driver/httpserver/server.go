@@ -4,6 +4,7 @@ package httpserver
 
 import (
 	"github.com/golang/glog"
+	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
 	"github.com/zhangpeihao/zim/pkg/push"
 	"github.com/zhangpeihao/zim/pkg/util"
@@ -42,11 +43,14 @@ type Server struct {
 }
 
 // NewServer 新建服务
-func NewServer(params *PushHTTPServerParameter, handler push.Handler) (srv *Server, err error) {
+func NewServer(handler push.Handler) (srv *Server, err error) {
 	glog.Infoln("push::driver::httpserver::NewServer")
 	srv = &Server{
-		PushHTTPServerParameter: *params,
-		handler:                 handler,
+		PushHTTPServerParameter: PushHTTPServerParameter{
+			BindAddress: viper.GetString("gateway.push-bind"),
+			Debug:       viper.GetBool("debug"),
+		},
+		handler: handler,
 	}
 	srv.httpServer = &http.Server{Handler: srv}
 	if srv.Debug {
