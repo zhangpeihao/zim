@@ -5,13 +5,13 @@ package httpserver
 import (
 	"bytes"
 	"flag"
+	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"net/http"
 	"testing"
 	"time"
-	"github.com/spf13/viper"
 )
 
 func init() {

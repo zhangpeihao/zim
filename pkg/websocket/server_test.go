@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
@@ -16,7 +17,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"github.com/spf13/viper"
 )
 
 func init() {
