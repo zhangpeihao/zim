@@ -23,13 +23,15 @@ func (t *TestSignal) String() string {
 func (t *TestSignal) Signal() {
 }
 
-func closeFunc() {
+func closeFunc(timeout time.Duration) error {
+	return nil
 }
 
 func RunLoop(t *testing.T, sc *SafeCloser, name string) {
 	ch := make(chan struct{})
-	err := sc.Add(name, func() {
+	err := sc.Add(name, func(timeout time.Duration) error {
 		ch <- struct{}{}
+		return nil
 	})
 	if err != nil {
 		t.Fatalf("SafeClose::Add() return error: %s", err)
@@ -96,8 +98,9 @@ func TestSafeCloserInfiniteTimeout(t *testing.T) {
 	}()
 
 	closed := false
-	closeFunc := func() {
+	closeFunc := func(time.Duration) error {
 		closed = true
+		return nil
 	}
 
 	if err = sc.WaitAndClose(0, closeFunc); err != nil {

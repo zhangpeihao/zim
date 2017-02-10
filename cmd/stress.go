@@ -6,13 +6,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/gorilla/websocket"
-	"github.com/influxdata/influxdb/client/v2"
-	"github.com/spf13/cobra"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
-	"github.com/zhangpeihao/zim/pkg/util"
 	"log"
 	"net/http"
 	"os"
@@ -20,6 +13,14 @@ import (
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/gorilla/websocket"
+	client "github.com/influxdata/influxdb/client/v2"
+	"github.com/spf13/cobra"
+	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
+	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 func init() {
@@ -78,8 +79,9 @@ var stressCmd = &cobra.Command{
 		}
 
 		terminationSignalsCh := make(chan os.Signal, 1)
-		util.WaitAndClose(terminationSignalsCh, time.Second*time.Duration(3), func() {
+		util.WaitAndClose(terminationSignalsCh, time.Second*time.Duration(3), func(timeout time.Duration) error {
 			SetExitFlag()
+			return nil
 		})
 		fmt.Println("Wait close gate done")
 

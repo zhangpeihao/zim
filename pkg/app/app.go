@@ -5,19 +5,34 @@ package app
 import (
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/json"
-	"fmt"
-	"github.com/golang/glog"
-	"github.com/zhangpeihao/zim/pkg/router"
 	"os"
+
+	"github.com/golang/glog"
+	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // App 应用数据
 type App struct {
-	Name     string         `json:"name"`
-	Key      string         `json:"key"`
-	RouteMap router.InfoMap `json:"router"`
-	Router   *router.Router `json:"-"`
+	Name     string  `json:"name"`
+	Key      string  `json:"key"`
+	KeyBytes []byte  `json:"-"`
+	RouteMap InfoMap `json:"router"`
+	Router   *Router `json:"-"`
+}
+
+// CheckSum CheckSum接口
+type CheckSum interface {
+	CheckSumSHA1(fields ...[]byte) string
+	CheckSumSHA256(fields ...[]byte) string
+	CheckSumMD5(fields ...[]byte) string
+}
+
+// Service App服务
+type Service interface {
+	// GetCheckSum 根据应用标志获取CheckSum接口
+	GetCheckSum(name string) CheckSum
 }
 
 // NewApp 新建App
@@ -35,30 +50,29 @@ func NewApp(config string) (*App, error) {
 		glog.Errorf("define::NewApp(%s) json.Decode error: %s\n", config, err)
 		return nil, err
 	}
-	app.Router, err = router.NewRouter(app.RouteMap)
+	app.Router, err = NewRouter(app.RouteMap)
 	if err != nil {
 		glog.Errorf("define::NewApp(%s) NewRouter error: %s\n", config, err)
 		return nil, err
 	}
+	app.KeyBytes = []byte(app.Key)
 	return &app, nil
 }
 
-// TokenSHA1 取得Token SHA1算法
-func (app *App) TokenSHA1(fields ...string) string {
+// CheckSumSHA1 取得CheckSum SHA1算法
+func (app *App) CheckSumSHA1(fields ...[]byte) string {
 	h := sha1.New()
-	for _, field := range fields {
-		h.Write([]byte(field))
-	}
-	h.Write([]byte(app.Key))
-	return fmt.Sprintf("%X", h.Sum(nil))
+	return util.CheckSumWithKey(h, app.KeyBytes, fields...)
 }
 
-// TokenMD5 取得Token MD5算法
-func (app *App) TokenMD5(fields ...string) string {
+// CheckSumSHA256 取得CheckSum SHA1算法
+func (app *App) CheckSumSHA256(fields ...[]byte) string {
+	h := sha256.New()
+	return util.CheckSumWithKey(h, app.KeyBytes, fields...)
+}
+
+// CheckSumMD5 取得CheckSum MD5算法
+func (app *App) CheckSumMD5(fields ...[]byte) string {
 	h := md5.New()
-	for _, field := range fields {
-		h.Write([]byte(field))
-	}
-	h.Write([]byte(app.Key))
-	return fmt.Sprintf("%X", h.Sum(nil))
+	return util.CheckSumWithKey(h, app.KeyBytes, fields...)
 }

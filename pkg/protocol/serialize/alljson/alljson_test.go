@@ -3,15 +3,12 @@
 package alljson
 
 import (
+	"bufio"
 	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"github.com/zhangpeihao/zim/pkg/define"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"reflect"
+	"flag"
 	"testing"
+
+	"github.com/zhangpeihao/zim/pkg/protocol"
 )
 
 type JSONData struct {
@@ -28,14 +25,15 @@ type TestCase struct {
 	ExpectCommand protocol.Command
 }
 
-var (
-	base64Payload = base64.StdEncoding.EncodeToString([]byte("foo bar"))
-)
+func init() {
+	flag.Set("v", "4")
+	flag.Set("logtostderr", "true")
+}
 
 func TestAllJson(t *testing.T) {
 	testCases := []TestCase{
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"msg/foo/bar","data":{"userid":""},"payload":"%s"}`, base64Payload)),
+			[]byte(`{"version":"j1","appid":"test","name":"msg/foo/bar","data":{"userid":""},"payload":"foo bar"}`),
 			protocol.Command{
 				Version: "j1",
 				AppID:   "test",
@@ -45,7 +43,7 @@ func TestAllJson(t *testing.T) {
 			},
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"login","data":{"userid":"","deviceid":"","timestamp":0,"token":""},"payload":"%s"}`, base64Payload)),
+			[]byte(`{"version":"j1","appid":"test","name":"login","data":{"userid":"","deviceid":"","timestamp":0,"token":""},"payload":"foo bar"}`),
 			protocol.Command{
 				Version: "j1",
 				AppID:   "test",
@@ -55,7 +53,7 @@ func TestAllJson(t *testing.T) {
 			},
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"close","data":{"userid":""},"payload":"%s"}`, base64Payload)),
+			[]byte(`{"version":"j1","appid":"test","name":"close","data":{"userid":""},"payload":"foo bar"}`),
 			protocol.Command{
 				Version: "j1",
 				AppID:   "test",
@@ -65,7 +63,7 @@ func TestAllJson(t *testing.T) {
 			},
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"p2u","data":{},"payload":"%s"}`, base64Payload)),
+			[]byte(`{"version":"j1","appid":"test","name":"p2u","data":{},"payload":"foo bar"}`),
 			protocol.Command{
 				Version: "j1",
 				AppID:   "test",
@@ -75,7 +73,7 @@ func TestAllJson(t *testing.T) {
 			},
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"hb","payload":"%s"}`, base64Payload)),
+			[]byte(`{"version":"j1","appid":"test","name":"hb","payload":"foo bar"}`),
 			protocol.Command{
 				Version: "j1",
 				AppID:   "test",
@@ -86,8 +84,10 @@ func TestAllJson(t *testing.T) {
 		},
 	}
 
+	engine := NewParseEngine()
+
 	for index, testCase := range testCases {
-		cmd, err := Parse(testCase.Message)
+		cmd, err := engine.Parse(bufio.NewReader(bytes.NewBuffer(testCase.Message)))
 		if err != nil {
 			t.Errorf("TestAllJson Case[%d]\nParse %s error: %s",
 				index+1, testCase.Message, err)
@@ -111,43 +111,24 @@ func TestAllJson(t *testing.T) {
 
 type TestErrorCase struct {
 	Message []byte
-	Error   error
 }
-
-var ErrJSONError = errors.New("json error")
 
 func TestError(t *testing.T) {
 	testCases := []TestErrorCase{
 		{
-			[]byte(fmt.Sprintf(`{"version":"T1","appid":"test","name":"msg/foo/bar","data":{"userid":""},"payload":"%s"}`, base64Payload)),
-			define.ErrUnsupportProtocol,
-		},
-		{
-			[]byte(fmt.Sprintf(`"appid":"test","name":"msg/foo/bar","data":{"userid":""},"payload":"%s"}`, base64Payload)),
-			define.ErrUnsupportProtocol,
-		},
-		{
 			[]byte(`{"version":"j1","appid":"test","name":`),
-			ErrJSONError,
 		},
 		{
-			[]byte(fmt.Sprintf(`{"version":"j1","appid":"test","name":"msg/foo/bar","data":{"userid","payload":"%s"}`, base64Payload)),
-			ErrJSONError,
+			[]byte(`{"version":"j1","appid":"test","name":"msg/foo/bar","data":{"userid","payload":"foo bar"}`),
 		},
 	}
+	engine := NewParseEngine()
+
 	for index, testCase := range testCases {
-		_, err := Parse(testCase.Message)
+		_, err := engine.Parse(bufio.NewReader(bytes.NewBuffer(testCase.Message)))
 		if err == nil {
-			t.Errorf("TestError Case[%d]\nParse %s\nNo error\nExpect: %s",
-				index+1, testCase.Message, testCase.Error)
-		} else if reflect.TypeOf(err) == reflect.TypeOf(new(json.SyntaxError)) {
-			if testCase.Error != ErrJSONError {
-				t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
-					index+1, testCase.Message, err, testCase.Error)
-			}
-		} else if err != testCase.Error {
-			t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
-				index+1, testCase.Message, reflect.TypeOf(err), testCase.Error)
+			t.Errorf("TestError Case[%d]\nParse %s\nshould return error",
+				index+1, testCase.Message)
 		}
 	}
 }

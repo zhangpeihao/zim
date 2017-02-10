@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/define"
@@ -14,9 +18,6 @@ import (
 	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
 	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/util/rand"
-	"sync"
-	"testing"
-	"time"
 )
 
 func init() {
@@ -50,7 +51,7 @@ func (handler *TestHandler) OnReceivedCommand(conn define.Connection, command *p
 	handler.Lock()
 	defer handler.Unlock()
 	handler.lastCommand = command
-	conn.LoginSuccess(command.AppID, "123", "web")
+	conn.LoginSuccess(command.AppID, "123", "web", "t1")
 	fmt.Printf("connection(%s, %s, %s, %s)\n", conn.ID(), conn.UserID(), conn.AppID(), conn.DeviceID())
 	if !conn.IsLogin() {
 		fmt.Println("Login state error")

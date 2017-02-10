@@ -3,17 +3,23 @@
 package gateway
 
 import (
-	"github.com/golang/glog"
-	"github.com/spf13/viper"
-	"github.com/zhangpeihao/zim/pkg/app"
-	"github.com/zhangpeihao/zim/pkg/define"
-	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/push/driver/httpserver"
-	"github.com/zhangpeihao/zim/pkg/util"
-	"github.com/zhangpeihao/zim/pkg/websocket"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/spf13/viper"
+	"github.com/zhangpeihao/zim/pkg/app"
+	"github.com/zhangpeihao/zim/pkg/broker"
+	"github.com/zhangpeihao/zim/pkg/broker/register"
+	"github.com/zhangpeihao/zim/pkg/define"
+	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/util"
+	"github.com/zhangpeihao/zim/pkg/websocket"
+
+	// 加载Broker
+	_ "github.com/zhangpeihao/zim/pkg/broker/httpapi"
+	_ "github.com/zhangpeihao/zim/pkg/broker/mock"
 )
 
 const (
@@ -24,7 +30,6 @@ const (
 // ServerParameter 网关服务参数
 type ServerParameter struct {
 	websocket.WSParameter
-	httpserver.PushHTTPServerParameter
 	// AppConfigs 应用配置
 	AppConfigs []string
 }
@@ -41,10 +46,10 @@ type Server struct {
 	wsServer define.SubServer
 	// connections 连接Map
 	connections map[string][]define.Connection
-	// pushServer Push服务
-	pushServer *httpserver.Server
 	// apps 应用Map
 	apps map[string]*app.App
+	// tag 消息队列tag
+	tag string
 }
 
 // NewServer 新建服务
@@ -57,12 +62,18 @@ func NewServer() (srv *Server, err error) {
 		connections: make(map[string][]define.Connection),
 		apps:        make(map[string]*app.App),
 	}
+	tag := viper.GetString("gateway.broker-tag")
+	if len(tag) == 0 {
+		srv.tag = ServerName
+	} else {
+		srv.tag = tag
+	}
 	srv.wsServer, err = websocket.NewServer(srv)
 	if err != nil {
 		return nil, err
 	}
-	srv.pushServer, err = httpserver.NewServer(srv)
-	if err != nil {
+	if err = register.Init(srv, "gateway.broker"); err != nil {
+		glog.Warningln("gateway::NewServer() register.Init() error:", err)
 		return nil, err
 	}
 	glog.Infof("srv.AppConfigs: %+v\n", srv.AppConfigs)
@@ -80,16 +91,17 @@ func NewServer() (srv *Server, err error) {
 func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 	glog.Infoln("gateway::Server::Run()")
 	srv.closer = closer
+	if err = broker.Run(closer); err != nil {
+		glog.Errorln("gateway::Server::Run() brocker.Run() error:", err)
+		return err
+	}
 	if err = srv.wsServer.Run(closer); err != nil {
 		glog.Errorln("gateway::Server::Run() wsServer error:", err)
 		return err
 	}
-	if err = srv.pushServer.Run(closer); err != nil {
-		glog.Errorln("gateway::Server::Run() pushServer run error:", err)
-		return err
-	}
-	err = srv.closer.Add(ServerName, func() {
+	err = srv.closer.Add(ServerName, func(timeout time.Duration) error {
 		glog.Infoln("gateway::Server::Run() to close")
+		return srv.Close(timeout)
 	})
 	return
 }
@@ -99,14 +111,6 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("gateway::Server::Close()")
 	defer glog.Warningln("gateway::Server::Close() Done")
 	defer srv.closer.Done(ServerName)
-	// 关闭WebSocket服务
-	if err = srv.wsServer.Close(timeout); err != nil {
-		glog.Errorln("gateway::Server::Close() websocket server close error:", err)
-	}
-	// 关闭Push server
-	if err = srv.pushServer.Close(timeout); err != nil {
-		glog.Errorln("gateway::Server::Close() push server close error:", err)
-	}
 	// 关闭所有链接
 	srv.Lock()
 	var connections []define.Connection
@@ -151,8 +155,8 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 	}
 
 	// Route
-	ink := appConfig.Router.Find(command.Name)
-	if ink == nil {
+	broker := appConfig.Router.Find(command.Name)
+	if broker == nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
 		return define.ErrAuthFailed
 	}
@@ -173,9 +177,9 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 			return define.ErrNeedAuth
 		}
 		glog.Infof("gateway::Server::OnReceivedCommand() login: %+v\n", loginCmd)
-		resp, err = ink.Invoke(loginCmd.UserID, command)
+		resp, err = broker.Publish(srv.tag, command)
 	} else {
-		resp, err = ink.Invoke(conn.UserID(), command)
+		resp, err = broker.Publish(srv.tag, command)
 	}
 
 	if err != nil {
@@ -183,14 +187,14 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 			command.Name, err)
 		return define.ErrAuthFailed
 	}
-	if resp.Name == protocol.Close {
+	if resp != nil && resp.Name == protocol.Close {
 		glog.Warningln("gateway::Server::OnReceivedCommand() invoke response close")
 		conn.Close(false)
 		return define.ErrAuthFailed
 	}
 
 	if !conn.IsLogin() {
-		conn.LoginSuccess(command.AppID, loginCmd.UserID, loginCmd.DeviceID)
+		conn.LoginSuccess(command.AppID, loginCmd.UserID, loginCmd.DeviceID, command.Version)
 		connid := conn.ID()
 		srv.Lock()
 		connections, find := srv.connections[connid]
@@ -243,13 +247,16 @@ func (srv *Server) OnPushToUser(cmd *protocol.Command) {
 	// Todo: Lockfree
 	srv.Lock()
 	if pushCmd.Tags == "*" {
+		glog.Infof("Push message to all\n")
 		// Push to all users
 		for _, connections := range srv.connections {
 			for _, conn := range connections {
+				glog.Infof("Push to user %s%s", conn.ID(), touser)
 				conn.Send(touser)
 			}
 		}
 	} else {
+		glog.Infof("Push message to %+v\n", pushCmd.UserIDList)
 		for _, id := range strings.Split(pushCmd.UserIDList, ",") {
 			connections, ok := srv.connections[define.ConnectionID(cmd.AppID, id)]
 			if ok {
@@ -262,4 +269,12 @@ func (srv *Server) OnPushToUser(cmd *protocol.Command) {
 		}
 	}
 	srv.Unlock()
+}
+
+// GetCheckSum Context接口
+func (srv *Server) GetCheckSum(appid string) app.CheckSum {
+	if appConfig, ok := srv.apps[appid]; ok {
+		return appConfig
+	}
+	return nil
 }

@@ -5,13 +5,14 @@ package util
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/glog"
 	"os"
 	"os/signal"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/golang/glog"
 )
 
 var (
@@ -22,7 +23,7 @@ var (
 )
 
 // CloseFunc 关闭函数
-type CloseFunc func()
+type CloseFunc func(timeout time.Duration) error
 
 // SafeCloseServer 安全退出服务接口
 type SafeCloseServer interface {
@@ -37,19 +38,19 @@ type SafeCloser struct {
 	sync.Mutex
 	closeFlag            int32
 	gate                 sync.WaitGroup
-	signals              map[string]chan struct{}
+	signals              map[string]chan time.Duration
 	terminationSignalsCh chan os.Signal
 }
 
 // NewSafeCloser 新建安全退出控制开关
 func NewSafeCloser() *SafeCloser {
 	return &SafeCloser{
-		signals: make(map[string]chan struct{}),
+		signals: make(map[string]chan time.Duration),
 	}
 }
 
 // Add 添加控制项，返回关闭信号
-func (sc *SafeCloser) Add(name string, closeFunc func()) error {
+func (sc *SafeCloser) Add(name string, closeFunc CloseFunc) error {
 	glog.Infof("util::SafeClose::Add(%s)\n", name)
 	sc.Lock()
 	defer sc.Unlock()
@@ -57,14 +58,14 @@ func (sc *SafeCloser) Add(name string, closeFunc func()) error {
 		return fmt.Errorf("safecloser %s existed", name)
 	}
 	sc.gate.Add(1)
-	ch := make(chan struct{})
+	ch := make(chan time.Duration)
 	sc.signals[name] = ch
 
 	// 侦听退出信号
 	go func() {
-		<-ch
+		timeout := <-ch
 		glog.Warningln("server \"" + name + "\" to close")
-		closeFunc()
+		closeFunc(timeout)
 	}()
 
 	return nil
@@ -92,15 +93,23 @@ func (sc *SafeCloser) WaitAndClose(timeout time.Duration, fn CloseFunc) error {
 	sc.Lock()
 	sc.terminationSignalsCh = make(chan os.Signal, 1)
 	sc.Unlock()
-	WaitAndClose(sc.terminationSignalsCh, timeout, func() {
-		atomic.StoreInt32(&sc.closeFlag, 1)
-		fn()
+	err := WaitAndClose(sc.terminationSignalsCh, timeout, func(timeout time.Duration) error {
+		var errRet, err error
+		if err = fn(timeout); err != nil {
+			glog.Infof("util::SafeClose::WaitAndClose() callback error: %s\n", err)
+			errRet = err
+		}
+		if err = sc.Close(timeout); err != nil {
+			glog.Infof("util::SafeClose::WaitAndClose() sc.Close() error: %s\n", err)
+			errRet = err
+		}
+		return errRet
 	})
-	return sc.Close(timeout)
+	return err
 }
 
 // WaitAndClose 开始安全退出
-func WaitAndClose(terminationSignalsCh chan os.Signal, timeout time.Duration, fn CloseFunc) {
+func WaitAndClose(terminationSignalsCh chan os.Signal, timeout time.Duration, fn CloseFunc) error {
 	glog.Infof("util::WaitAndClose()\n")
 	signal.Notify(terminationSignalsCh, TerminationSignals...)
 	defer func() {
@@ -109,7 +118,7 @@ func WaitAndClose(terminationSignalsCh chan os.Signal, timeout time.Duration, fn
 	}()
 	s := <-terminationSignalsCh
 	glog.Warningf("Received signal: %s\n", s.String())
-	fn()
+	return fn(timeout)
 }
 
 // Close 开始安全退出
@@ -119,7 +128,7 @@ func (sc *SafeCloser) Close(timeout time.Duration) (err error) {
 	// 异步向所有控制项发送退出指令
 	go func() {
 		sc.Lock()
-		chs := make([]chan<- struct{}, len(sc.signals))
+		chs := make([]chan<- time.Duration, len(sc.signals))
 		i := 0
 		for _, ch := range sc.signals {
 			chs[i] = ch
@@ -127,7 +136,7 @@ func (sc *SafeCloser) Close(timeout time.Duration) (err error) {
 		}
 		sc.Unlock()
 		for _, ch := range chs {
-			ch <- struct{}{}
+			ch <- timeout
 		}
 	}()
 

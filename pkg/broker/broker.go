@@ -1,58 +1,66 @@
-// Copyright 2016 Zhang Peihao <zhangpeihao@gmail.com>
+// Copyright 2016-2017 Zhang Peihao <zhangpeihao@gmail.com>
 
 // Package broker 异步消息接口
 package broker
 
 import (
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/protocol"
+	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // Broker 异步消息接口
 type Broker interface {
+	util.SafeCloseServer
 	// Publish 发布消息到消息队列
-	Publish(tag string, cmd *protocol.Command) error
+	Publish(tag string, cmd *protocol.Command) (*protocol.Command, error)
 	// Subscribe 从消息队列订阅消息
 	Subscribe(tag string, handler SubscribeHandler) error
+	// String 串行化输出
+	String() string
 }
 
 // SubscribeHandler 订阅消息处理函数，返回error，消息将保留在队列中
 type SubscribeHandler func(tag string, cmd *protocol.Command) error
 
-// NewBrokerHandler 新建Broker函数，参数：viper参数perfix
-type NewBrokerHandler func(string) (Broker, error)
-
 var (
-	brokerHandlers = make(map[string]NewBrokerHandler)
-	brokers        = make(map[string]Broker)
+	brokers = make(map[string]Broker)
 )
 
-// Register 注册Broker
-func Register(name string, handler NewBrokerHandler) {
-	if _, found := brokerHandlers[name]; found {
-		glog.Warningf("broker::Register() Broker[%s] existed\n")
-	}
-	brokerHandlers[name] = handler
+// Set 获取Broker
+func Set(name string, broker Broker) {
+	brokers[name] = broker
 }
 
-// Init 初始化
-func Init(viperPerfix string) error {
-	for name, brokerHandler := range brokerHandlers {
-		glog.Infof("broker::Init() Init broker[%s]\n", name)
-		broker, err := brokerHandler(viperPerfix)
-		if err != nil {
-			glog.Errorf("broker::Init() init broker[%s] init error: %s", name, err)
-			return err
-		}
-		brokers[name] = broker
+// Get 获取Broker
+func Get(name string) Broker {
+	if broker, found := brokers[name]; found {
+		return broker
 	}
 	return nil
 }
 
-// Get 获取Brokern
-func Get(name string) Broker {
-	if broker, found := brokers[name]; found {
-		return broker
+// Run 运行
+func Run(closer *util.SafeCloser) (err error) {
+	glog.Infoln("broker::define::Run()")
+	defer glog.Infoln("broker::define::Run() done")
+	for _, broker := range brokers {
+		if err = broker.Run(closer); err != nil {
+			glog.Errorln("broker::Run() error:", err)
+			break
+		}
+	}
+	return
+}
+
+// Close 关闭
+func Close(timeout time.Duration) (err error) {
+	glog.Warningln("broker::define::Close()")
+	defer glog.Warningln("broker::define::Close() done")
+	for _, broker := range brokers {
+		go broker.Close(timeout)
 	}
 	return nil
 }

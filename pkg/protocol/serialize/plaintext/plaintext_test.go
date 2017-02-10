@@ -3,13 +3,16 @@
 package plaintext
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/zhangpeihao/zim/pkg/define"
-	"github.com/zhangpeihao/zim/pkg/protocol"
+	"io"
 	"reflect"
 	"testing"
+
+	"github.com/zhangpeihao/zim/pkg/define"
+	"github.com/zhangpeihao/zim/pkg/protocol"
 )
 
 type TestCase struct {
@@ -24,7 +27,8 @@ func TestPlainText(t *testing.T) {
 test
 msg/foo/bar
 {"userid":""}
-foo bar`),
+foo bar
+`),
 			protocol.Command{
 				Version: "t1",
 				AppID:   "test",
@@ -38,7 +42,8 @@ foo bar`),
 test
 login
 {"userid":"","deviceid":"","timestamp":0,"token":""}
-foo bar`),
+foo bar
+`),
 			protocol.Command{
 				Version: "t1",
 				AppID:   "test",
@@ -52,7 +57,8 @@ foo bar`),
 test
 close
 {"userid":""}
-foo bar`),
+foo bar
+`),
 			protocol.Command{
 				Version: "t1",
 				AppID:   "test",
@@ -66,7 +72,8 @@ foo bar`),
 test
 p2u
 {}
-foo bar`),
+foo bar
+`),
 			protocol.Command{
 				Version: "t1",
 				AppID:   "test",
@@ -80,7 +87,8 @@ foo bar`),
 test
 hb
 
-foo bar`),
+foo bar
+`),
 			protocol.Command{
 				Version: "t1",
 				AppID:   "test",
@@ -91,8 +99,10 @@ foo bar`),
 		},
 	}
 
+	engine := NewParseEngine()
+
 	for index, testCase := range testCases {
-		cmd, err := Parse(testCase.Message)
+		cmd, err := engine.Parse(bufio.NewReader(bytes.NewBuffer(testCase.Message)))
 		if err != nil {
 			t.Errorf("TestPlainText Case[%d]\nParse %s error: %s",
 				index+1, testCase.Message, err)
@@ -128,21 +138,23 @@ func TestError(t *testing.T) {
 test
 msg/foo/bar
 {"id":"","timestamp":0,"token":""}
-foo bar`),
+foo bar
+`),
 			define.ErrUnsupportProtocol,
 		},
 		{
 			[]byte(`t1
 test
 msg/foo/bar`),
-			protocol.ErrParseFailed,
+			io.EOF,
 		},
 		{
 			[]byte(`t1
 test
 msg/foo/bar
 {"Format error JSON
-foo bar`),
+foo bar
+`),
 			ErrJSONError,
 		},
 		{
@@ -150,7 +162,8 @@ foo bar`),
 test
 login
 {"Format error JSON
-foo bar`),
+foo bar
+`),
 			ErrJSONError,
 		},
 		{
@@ -158,7 +171,8 @@ foo bar`),
 test
 close
 {"Format error JSON
-foo bar`),
+foo bar
+`),
 			ErrJSONError,
 		},
 		{
@@ -166,12 +180,16 @@ foo bar`),
 test
 p2u
 {"Format error JSON
-foo bar`),
+foo bar
+`),
 			ErrJSONError,
 		},
 	}
+
+	engine := NewParseEngine()
+
 	for index, testCase := range testCases {
-		_, err := Parse(testCase.Message)
+		_, err := engine.Parse(bufio.NewReader(bytes.NewBuffer(testCase.Message)))
 		if err == nil {
 			t.Errorf("TestError Case[%d]\nParse %s\nNo error\nExpect: %s",
 				index+1, testCase.Message, testCase.Error)
@@ -180,9 +198,10 @@ foo bar`),
 				t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
 					index+1, testCase.Message, err, testCase.Error)
 			}
-		} else if err != testCase.Error {
+		} else if err.Error() != testCase.Error.Error() {
 			t.Errorf("TestError Case[%d]\nParse %s\nGot: %+v,\nExpect: %s",
-				index+1, testCase.Message, reflect.TypeOf(err), testCase.Error)
+				index+1, testCase.Message, err, testCase.Error)
 		}
+		engine.Close()
 	}
 }

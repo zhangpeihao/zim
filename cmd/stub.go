@@ -12,25 +12,34 @@ import (
 	"os"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
-	"github.com/zhangpeihao/zim/pkg/invoker/driver/httpapi"
+	"github.com/zhangpeihao/zim/pkg/app"
+	"github.com/zhangpeihao/zim/pkg/broker/httpapi"
+	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
 )
 
-var (
-	loginCommand = `t1
-test
-p2u
-{"tags":"*"}
-{"from":"%s","msg":"user %s enter"}
-`
-	msgCommand = `t1
-test
-p2u
-{"tags":"*"}
-{"from":"%s","msg":"%s"}
-`
+const (
+	// Tag 消息broker tag
+	Tag = "gateway"
 )
+
+// CheckSumHandler CheckSum句柄类
+type CheckSumHandler struct {
+}
+
+var (
+	handler = &CheckSumHandler{}
+)
+
+// GetCheckSum 接口函数
+func (handler *CheckSumHandler) GetCheckSum(name string) app.CheckSum {
+	return &app.App{
+		Key:      cfgKey,
+		KeyBytes: []byte(cfgKey),
+	}
+}
 
 // stubCmd represents the stub command
 var stubCmd = &cobra.Command{
@@ -40,8 +49,7 @@ var stubCmd = &cobra.Command{
 
 提供桩服务，接收Gateway消息，并回消息`,
 	Run: func(cmd *cobra.Command, args []string) {
-		http.HandleFunc("/login", HandleLogin)
-		http.HandleFunc("/msg", HandleMsg)
+		http.HandleFunc("/"+Tag, HandleHTTP)
 		listener, err := net.Listen("tcp", cfgStubBindAddress)
 		if err != nil {
 			log.Fatal("listen error:", err)
@@ -57,8 +65,9 @@ var stubCmd = &cobra.Command{
 			}
 		}()
 		terminationSignalsCh := make(chan os.Signal, 1)
-		util.WaitAndClose(terminationSignalsCh, time.Second*time.Duration(3), func() {
+		util.WaitAndClose(terminationSignalsCh, time.Second*time.Duration(3), func(timeout time.Duration) error {
 			SetExitFlag()
+			return nil
 		})
 	},
 }
@@ -67,41 +76,90 @@ func init() {
 	RootCmd.AddCommand(stubCmd)
 
 	stubCmd.PersistentFlags().StringVar(&cfgStubBindAddress, "stub-addr", ":8880", "service stub绑定地址")
+	stubCmd.PersistentFlags().StringVar(&cfgHTTPBrokerURL, "http-broker-url", "http://127.0.0.1:8771", "HTTP API Broker请求URL")
 	stubCmd.PersistentFlags().StringVar(&cfgAppID, "appid", "test", "App ID")
+	stubCmd.PersistentFlags().StringVar(&cfgKey, "key", "1234567890", "App security key")
 
 }
 
-// HandleLogin 登入处理
-func HandleLogin(w http.ResponseWriter, r *http.Request) {
+// HandleHTTP 登入处理
+func HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	userID := r.Header.Get(httpapi.HeaderUserID)
-	appID := r.Header.Get(httpapi.HeaderAppID)
-	log.Printf("HandleLogin(%s, %s)\n", userID, appID)
-	w.WriteHeader(200)
-	w.Write([]byte(fmt.Sprintf(loginCommand, "system", userID)))
+	var (
+		payload []byte
+		err     error
+		cmd     *protocol.Command
+		ok      bool
+	)
+
+	if payload, err = ioutil.ReadAll(r.Body); err != nil {
+		glog.Warningf("HandleLogin() Read payload error: %s\n",
+			err)
+		w.WriteHeader(400)
+		return
+	}
+	if cmd, err = httpapi.ParseCommand(handler, Tag, r.Header, payload, 10); err != nil {
+		glog.Warningf("HandleLogin() ParseCommand error: %s\n",
+			err)
+		w.WriteHeader(400)
+		return
+	}
+	glog.Info("got cmd:", cmd)
+	switch cmd.FirstPartName() {
+	case protocol.Login:
+		var loginCmd *protocol.GatewayLoginCommand
+		loginCmd, ok = cmd.Data.(*protocol.GatewayLoginCommand)
+		if !ok {
+			glog.Warningf("HandleLogin() cmd type error: %s\n",
+				err)
+			w.WriteHeader(400)
+			return
+		}
+
+		Reponse(w, &protocol.Command{
+			AppID: cmd.AppID,
+			Name:  protocol.Push2User,
+			Data: &protocol.Push2UserCommand{
+				Tags: "*",
+			},
+			Payload: []byte(fmt.Sprintf(`{"from":"%s","msg":"user %s enter"}`,
+				"system", loginCmd.UserID)),
+		})
+	case protocol.Message:
+		var msgCmd *protocol.GatewayMessageCommand
+		msgCmd, ok = cmd.Data.(*protocol.GatewayMessageCommand)
+		if !ok {
+			glog.Warningf("HandleLogin() cmd type error: %s\n",
+				err)
+			w.WriteHeader(400)
+			return
+		}
+
+		Reponse(w, &protocol.Command{
+			AppID: cmd.AppID,
+			Name:  protocol.Push2User,
+			Data: &protocol.Push2UserCommand{
+				Tags: "*",
+			},
+			Payload: []byte(fmt.Sprintf(`{"from":"%s","msg":"%s"}`,
+				msgCmd.UserID, string(cmd.Payload))),
+		})
+	default:
+		glog.Warningf("HandleLogin() unsupport command name: %s\n",
+			err)
+		w.WriteHeader(400)
+	}
 }
 
-// HandleMsg 消息处理
-func HandleMsg(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	userID := r.Header.Get(httpapi.HeaderUserID)
-	appID := r.Header.Get(httpapi.HeaderAppID)
-
-	if len(userID) == 0 {
-		w.WriteHeader(400)
-		log.Printf("HandleMsg() no %s header\n", httpapi.HeaderUserID)
-		return
-	}
-	if len(appID) == 0 {
-		w.WriteHeader(400)
-		log.Printf("HandleMsg() no %s header\n", httpapi.HeaderAppID)
-		return
-	}
-	payload, err := ioutil.ReadAll(r.Body)
+// Reponse 发响应
+func Reponse(w http.ResponseWriter, cmd *protocol.Command) {
+	err := httpapi.ComposeCommand(handler, Tag, w.Header(), cmd)
 	if err != nil {
+		glog.Errorf("Reponse() ComposeCommand error: %s\n", err)
 		w.WriteHeader(400)
-		log.Printf("HandleMsg() read error: %s\n", err.Error())
 		return
 	}
-	w.Write([]byte(fmt.Sprintf(msgCommand, userID, string(payload))))
+	if len(cmd.Payload) > 0 {
+		w.Write(cmd.Payload)
+	}
 }

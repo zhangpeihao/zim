@@ -267,7 +267,7 @@ func TestString(t *testing.T) {
   AppID: test
   Name: msg/foo/bar
   Data: nil
-  Payload: [102 111 111 32 98 97 114]
+  Payload: foo bar
 }
 `,
 		},
@@ -285,7 +285,7 @@ func TestString(t *testing.T) {
   AppID: test
   Name: msg/foo/bar
   Data: ERROR
-  Payload: [102 111 111 32 98 97 114]
+  Payload: foo bar
 }
 `,
 		},
@@ -303,7 +303,27 @@ func TestString(t *testing.T) {
   AppID: test
   Name: msg/foo/bar
   Data: "data"
-  Payload: [102 111 111 32 98 97 114]
+  Payload: foo bar
+}
+`,
+		},
+		{
+			&Command{
+				"t1",
+				"test",
+				"p2u",
+				&Push2UserCommand{
+					Tags: "*",
+				},
+				[]byte("foo bar"),
+			},
+			`
+{
+  Version: t1
+  AppID: test
+  Name: p2u
+  Data: {"tags":"*"}
+  Payload: foo bar
 }
 `,
 		},

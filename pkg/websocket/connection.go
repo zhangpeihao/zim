@@ -23,12 +23,13 @@ var (
 
 // Connection 连接
 type Connection struct {
-	login    bool
-	id       string
-	userID   string
-	appID    string
-	deviceID string
-	c        *websocket.Conn
+	login          bool
+	id             string
+	userID         string
+	appID          string
+	deviceID       string
+	defaultVersion string
+	c              *websocket.Conn
 }
 
 // NewConnection 新建连接
@@ -108,10 +109,11 @@ func (conn *Connection) String() string {
 }
 
 // LoginSuccess 登入成功
-func (conn *Connection) LoginSuccess(appID, userID, deviceID string) {
+func (conn *Connection) LoginSuccess(appID, userID, deviceID, defaultVersion string) {
 	conn.appID = appID
 	conn.userID = userID
 	conn.id = define.ConnectionID(appID, userID)
+	conn.defaultVersion = defaultVersion
 	conn.login = true
 }
 
@@ -122,7 +124,9 @@ func (conn *Connection) IsLogin() bool {
 
 // Send 发送命令
 func (conn *Connection) Send(cmd *protocol.Command) error {
-	message, err := serialize.Compose(cmd)
+	sendCmd := cmd.Copy()
+	sendCmd.Version = conn.defaultVersion
+	message, err := serialize.Compose(sendCmd)
 	if err != nil {
 		return err
 	}

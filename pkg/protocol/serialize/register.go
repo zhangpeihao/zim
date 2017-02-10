@@ -2,9 +2,7 @@
 
 package serialize
 
-import (
-	"github.com/zhangpeihao/zim/pkg/protocol"
-)
+import "github.com/zhangpeihao/zim/pkg/protocol"
 
 // Serializer 串行化函数，所有实现都必须完成以下函数
 type Serializer struct {
@@ -12,8 +10,8 @@ type Serializer struct {
 	Version string
 	// ProbeByte 协议首字节
 	ProbeByte byte
-	// Parse 解析信令
-	Parse func(message []byte) (cmd *protocol.Command, err error)
+	// NewParseEngine 解析信令
+	NewParseEngine func() (engine ParseEngine)
 	// Compose 将信令编码
 	Compose func(cmd *protocol.Command) ([]byte, error)
 }

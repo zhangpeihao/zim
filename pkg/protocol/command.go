@@ -6,9 +6,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
 	"reflect"
 	"strings"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -24,20 +25,22 @@ const (
 	HeartBeatResponse = "hbr"
 	// Push2User 推送消息给指定用户
 	Push2User = "p2u"
+	// Push2Service 转发消息给服务
+	Push2Service = "p2s"
 )
 
 // Command 信令
 type Command struct {
 	// Version 信令版本（第一个字母：'t'－文本协议，'p'－protobuf协议）
-	Version string `json:"version"`
+	Version string
 	// AppID AppID
-	AppID string `json:"appid"`
+	AppID string
 	// Name 信令名，用'/'分隔多级信令（用于路由），例如：msg/foo/bar
-	Name string `json:"name"`
+	Name string
 	// Data 网关信令数据
-	Data interface{} `json:"data,omitempty"`
+	Data interface{}
 	// Payload 业务数据
-	Payload []byte `json:"payload,omitempty"`
+	Payload []byte
 }
 
 // FirstPartName 第一段信令名
@@ -82,8 +85,8 @@ func (cmd Command) String() string {
 			data = []byte("ERROR")
 		}
 	}
-	return fmt.Sprintf("\n{\n  Version: %s\n  AppID: %s\n  Name: %s\n  Data: %s\n  Payload: %+v\n}\n",
-		cmd.Version, cmd.AppID, cmd.Name, string(data), cmd.Payload)
+	return fmt.Sprintf("\n{\n  Version: %s\n  AppID: %s\n  Name: %s\n  Data: %s\n  Payload: %s\n}\n",
+		cmd.Version, cmd.AppID, cmd.Name, string(data), string(cmd.Payload))
 }
 
 // Copy 复制
@@ -97,28 +100,28 @@ func (cmd *Command) Copy() *Command {
 	}
 }
 
-// Parse 解析命令
-func (cmd *Command) Parse(data []byte) (err error) {
+// ParseData 解析命令
+func (cmd *Command) ParseData(data []byte) (err error) {
 	if data != nil && len(data) > 0 {
 		switch cmd.FirstPartName() {
 		case Login:
 			var loginCmd GatewayLoginCommand
 			if err = json.Unmarshal(data, &loginCmd); err != nil {
-				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal Login error:", err)
 				break
 			}
 			cmd.Data = &loginCmd
 		case Close:
 			var closeCmd GatewayCloseCommand
 			if err = json.Unmarshal(data, &closeCmd); err != nil {
-				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal Close error:", err)
 				break
 			}
 			cmd.Data = &closeCmd
 		case Message:
 			var msgCmd GatewayMessageCommand
 			if err = json.Unmarshal(data, &msgCmd); err != nil {
-				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal Message error:", err)
 				break
 			}
 			cmd.Data = &msgCmd
@@ -126,7 +129,7 @@ func (cmd *Command) Parse(data []byte) (err error) {
 			var pushCmd Push2UserCommand
 
 			if err = json.Unmarshal(data, &pushCmd); err != nil {
-				glog.Warningln("protocol::Command::Parse() json.Unmarshal error:", err)
+				glog.Warningln("protocol::Command::Parse() json.Unmarshal Push2User error:", err)
 				break
 			}
 			cmd.Data = &pushCmd

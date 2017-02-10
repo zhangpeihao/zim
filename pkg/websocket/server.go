@@ -3,17 +3,18 @@
 package websocket
 
 import (
+	"net"
+	"net/http"
+	"strings"
+	"text/template"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
-	"net"
-	"net/http"
-	"strings"
-	"text/template"
-	"time"
 )
 
 const (
@@ -125,9 +126,9 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 			srv.WSSBindAddress, httpsErr)
 		return httpsErr
 	}
-	err = srv.closer.Add(ServerName, func() {
+	err = srv.closer.Add(ServerName, func(timeout time.Duration) error {
 		glog.Warningln("websocket::Server::Run() to close")
-		srv.httpListener.Close()
+		return srv.Close(timeout)
 	})
 
 	return err

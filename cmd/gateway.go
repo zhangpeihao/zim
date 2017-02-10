@@ -4,12 +4,13 @@
 package cmd
 
 import (
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/gateway"
 	"github.com/zhangpeihao/zim/pkg/util"
-	"time"
 )
 
 // gatewayCmd gateway命令
@@ -46,8 +47,8 @@ var gatewayCmd = &cobra.Command{
 		// 等待退出信号，并安全退出
 		closeTimeout := time.Second * time.Duration(10)
 		closer.WaitAndClose(closeTimeout,
-			func() {
-				gatewaySrv.Close(closeTimeout)
+			func(timeout time.Duration) error {
+				return nil
 			})
 	},
 }

@@ -10,7 +10,7 @@ type Connection interface {
 	AppID() string
 	UserID() string
 	DeviceID() string
-	LoginSuccess(appid, userid, device string)
+	LoginSuccess(appid, userid, device, version string)
 	IsLogin() bool
 	Close(force bool) error
 	String() string

@@ -28,6 +28,7 @@ var (
 
 	// stub 参数
 	cfgStubBindAddress string
+	cfgHTTPBrokerURL   string
 
 	// 计数器
 	gErrorCounter      int32
