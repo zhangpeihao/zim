@@ -56,6 +56,12 @@ func TestMockBroker(t *testing.T) {
 		t.Fatal(`broker.Get("mock") return nil`)
 	}
 
+	b.Run(nil)
+
+	if b.String() != "mock" {
+		t.Error("b.String :%s\n", b.String())
+	}
+
 	SubscribeMockHandler = func(tag string) (cmd *protocol.Command, err error) {
 		glog.Infof("SubscribeMockHandler(%s)%s\n", tag)
 		for {
@@ -112,4 +118,5 @@ func TestMockBroker(t *testing.T) {
 	case <-time.After(time.Second * 4):
 		t.Error("Test timeout")
 	}
+	b.Close(time.Second)
 }
