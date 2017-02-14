@@ -3,8 +3,9 @@
 package protocol
 
 import (
-	"crypto/md5"
-	"fmt"
+	"strconv"
+
+	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // GatewayLoginCommand 网关登入信令
@@ -15,7 +16,7 @@ type GatewayLoginCommand struct {
 	DeviceID string `json:"deviceid"`
 	// Timestamp Unix时间戳（单位秒）
 	Timestamp int64 `json:"timestamp"`
-	// Token 认证字
+	// Token 认证字=md5(<app key>,UserID,DeviceID,Timestamp)
 	Token string `json:"token"`
 }
 
@@ -31,15 +32,9 @@ type GatewayMessageCommand struct {
 	UserID string `json:"userid"`
 }
 
-// Key 密钥类型
-type Key []byte
-
-// Token 取得Token
-func (key Key) Token(cmd *GatewayLoginCommand) string {
-	h := md5.New()
-	h.Write([]byte(cmd.UserID))
-	h.Write([]byte(cmd.DeviceID))
-	h.Write([]byte(fmt.Sprintf("%d", cmd.Timestamp)))
-	h.Write(key)
-	return fmt.Sprintf("%X", h.Sum(nil))
+// CalToken 计算Token
+func (cmd *GatewayLoginCommand) CalToken(key []byte) string {
+	return util.CheckSumMD5(key, []byte(cmd.UserID),
+		[]byte(cmd.DeviceID),
+		[]byte(strconv.Itoa(int(cmd.Timestamp))))
 }

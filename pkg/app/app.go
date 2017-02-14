@@ -15,11 +15,12 @@ import (
 
 // App 应用数据
 type App struct {
-	Name     string  `json:"name"`
-	Key      string  `json:"key"`
-	KeyBytes []byte  `json:"-"`
-	RouteMap InfoMap `json:"router"`
-	Router   *Router `json:"-"`
+	Name       string  `json:"name"`
+	Key        string  `json:"key"`
+	KeyBytes   []byte  `json:"-"`
+	RouteMap   InfoMap `json:"router"`
+	Router     *Router `json:"-"`
+	TokenCheck string  `json:"token-check"`
 }
 
 // CheckSum CheckSum接口

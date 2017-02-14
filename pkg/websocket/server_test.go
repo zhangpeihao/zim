@@ -94,7 +94,7 @@ func TestServer(t *testing.T) {
 		UserID:    "123",
 		Timestamp: time.Now().Unix(),
 	}
-	login.Token = protocol.Key("1234567890").Token(&login)
+	login.Token = login.CalToken([]byte("1234567890"))
 	enc := json.NewEncoder(buf)
 	enc.Encode(&login)
 	buf.WriteString("\n")

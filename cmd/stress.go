@@ -111,14 +111,13 @@ func stressLoop(id uint) {
 
 	idstr := strconv.Itoa(int(id))
 	now := time.Now().Unix()
-	tokenKey := protocol.Key([]byte(cfgKey))
 	loginCmd := &protocol.GatewayLoginCommand{
 		UserID:    idstr,
 		DeviceID:  "web",
 		Timestamp: now,
 		Token:     "",
 	}
-	loginCmd.Token = tokenKey.Token(loginCmd)
+	loginCmd.Token = loginCmd.CalToken([]byte(cfgKey))
 
 	cmd := &protocol.Command{
 		Version: "t1",

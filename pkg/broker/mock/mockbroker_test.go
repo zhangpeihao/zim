@@ -59,7 +59,7 @@ func TestMockBroker(t *testing.T) {
 	b.Run(nil)
 
 	if b.String() != "mock" {
-		t.Error("b.String :%s\n", b.String())
+		t.Errorf("b.String :%s\n", b.String())
 	}
 
 	SubscribeMockHandler = func(tag string) (cmd *protocol.Command, err error) {

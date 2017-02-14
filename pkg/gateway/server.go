@@ -25,6 +25,8 @@ import (
 const (
 	// ServerName 服务名
 	ServerName = "gateway"
+	// LoginTimeout 登入超时时间（单位：秒）
+	LoginTimeout = 3600
 )
 
 // ServerParameter 网关服务参数
@@ -175,6 +177,20 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 			glog.Warningf("gateway::Server::OnReceivedCommand() invoke (%s) error %s\n",
 				command.Name, err)
 			return define.ErrNeedAuth
+		}
+		if strings.ToLower(appConfig.TokenCheck) == "yes" {
+			now := time.Now().Unix()
+			if loginCmd.Timestamp+LoginTimeout < now {
+				glog.Warningf("gateway::Server::OnReceivedCommand() login timeout! loginCmd.Timestamp: %d, LoginTimeout: %d, now: %d\n",
+					loginCmd.Timestamp, LoginTimeout, now)
+				return define.ErrNeedAuth
+			}
+			token := loginCmd.CalToken(appConfig.KeyBytes)
+			if token != strings.ToUpper(loginCmd.Token) {
+				glog.Warningf("gateway::Server::OnReceivedCommand() token unmatch! loginCmd.Token: %s, token: %s\n",
+					loginCmd.Token, token)
+				return define.ErrNeedAuth
+			}
 		}
 		glog.Infof("gateway::Server::OnReceivedCommand() login: %+v\n", loginCmd)
 		resp, err = broker.Publish(srv.tag, command)
