@@ -66,7 +66,7 @@ func (app *App) CheckSumSHA1(fields ...[]byte) string {
 	return util.CheckSumWithKey(h, app.KeyBytes, fields...)
 }
 
-// CheckSumSHA256 取得CheckSum SHA1算法
+// CheckSumSHA256 取得CheckSum SHA256算法
 func (app *App) CheckSumSHA256(fields ...[]byte) string {
 	h := sha256.New()
 	return util.CheckSumWithKey(h, app.KeyBytes, fields...)
