@@ -4,7 +4,7 @@
 
 ## Token校验逻辑 (Done)
 
-## 重构SafeCloser，使用Context实现
+## 重构SafeCloser，使用Context实现 (Done)
 
 ## jsoniter支持
 
