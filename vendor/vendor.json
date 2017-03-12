@@ -239,6 +239,12 @@
 			"revisionTime": "2016-11-17T07:43:51Z"
 		},
 		{
+			"checksumSHA1": "QcPExQkoJVEV83I/WfFYCK92AoY=",
+			"path": "github.com/zhangpeihao/shutdown",
+			"revision": "592fca495de783b3ae6b946adf1e50f6f2f349eb",
+			"revisionTime": "2017-03-12T10:49:17Z"
+		},
+		{
 			"checksumSHA1": "h+pFYiRHBogczS8/F1NoN3Ata44=",
 			"path": "golang.org/x/crypto/curve25519",
 			"revision": "1f22c0103821b9390939b6776727195525381532",
