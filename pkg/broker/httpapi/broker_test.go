@@ -4,9 +4,11 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"testing"
 	"time"
@@ -14,15 +16,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/zhangpeihao/shutdown"
 	"github.com/zhangpeihao/zim/pkg/app"
 	"github.com/zhangpeihao/zim/pkg/broker"
 	"github.com/zhangpeihao/zim/pkg/broker/register"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
-
-type TestHandler struct {
-}
 
 const (
 	httpport    = 8656
@@ -32,19 +31,9 @@ const (
 )
 
 var (
-	handler = &TestHandler{}
-)
-
-var (
+	globalContext            context.Context
 	cmdPublish, cmdSubscribe *protocol.Command
 )
-
-func (handler *TestHandler) GetCheckSum(name string) app.CheckSum {
-	return &app.App{
-		Key:      "123",
-		KeyBytes: []byte("123"),
-	}
-}
 
 func init() {
 	flag.Set("v", "4")
@@ -57,14 +46,27 @@ func init() {
 
 func TestSuite(t *testing.T) {
 	var err error
-	if err = register.Init(handler, viperPerfix); err != nil {
+	cfgKey := "123"
+	appController, err := app.NewController(nil)
+	if err != nil {
+		log.Fatal("new app controller error:", err)
+		return
+	}
+	appController.AddApp(&app.App{
+		ID:       "test",
+		Key:      cfgKey,
+		KeyBytes: []byte(cfgKey),
+	})
+	globalContext = appController.SaveIntoContext(shutdown.NewContext())
+
+	if err = register.Init(viperPerfix); err != nil {
 		fmt.Println("broker.Init() error:", err)
 	}
-	closer := util.NewSafeCloser()
-	broker.Run(closer)
+	broker.Run(globalContext)
 	t.Run("Producer", testProducer)
 	t.Run("Consumer", testConsumer)
-	err = closer.Close(time.Second * 2)
+
+	err = shutdown.Shutdown(globalContext, time.Second*2, nil)
 	if err != nil {
 		t.Error("close timeout")
 	}
@@ -85,7 +87,7 @@ func testProducer(t *testing.T) {
 				err)
 			w.WriteHeader(400)
 		} else {
-			if cmd, err := ParseCommand(handler, testtag, r.Header, payload, 10); err != nil {
+			if cmd, err := ParseCommand(globalContext, testtag, r.Header, payload, 10); err != nil {
 				glog.Warningf("broker::httpapi::ServeHTTP() ParseCommand error: %s\n",
 					err)
 				w.WriteHeader(400)
@@ -168,7 +170,7 @@ func SendCommand(cmd *protocol.Command) (err error) {
 		return
 	}
 
-	err = ComposeCommand(handler, testtag, req.Header, cmd)
+	err = ComposeCommand(globalContext, testtag, req.Header, cmd)
 	if err != nil {
 		glog.Errorf("invoker::driver::httpapi::Publish() ComposeCommand error: %s\n", err)
 		return

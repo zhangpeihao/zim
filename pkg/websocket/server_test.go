@@ -4,20 +4,27 @@ package websocket
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"github.com/zhangpeihao/shutdown"
+	"github.com/zhangpeihao/zim/pkg/app"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	_ "github.com/zhangpeihao/zim/pkg/protocol/serialize/register"
-	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/util/rand"
+)
+
+var (
+	globalContext context.Context
 )
 
 func init() {
@@ -73,8 +80,20 @@ func TestServer(t *testing.T) {
 		t.Fatal("NewServer error:", err)
 	}
 
-	closer := util.NewSafeCloser()
-	if err = s.Run(closer); err != nil {
+	cfgKey := "123"
+	appController, err := app.NewController(nil)
+	if err != nil {
+		log.Fatal("new app controller error:", err)
+		return
+	}
+	appController.AddApp(&app.App{
+		ID:       "test",
+		Key:      cfgKey,
+		KeyBytes: []byte(cfgKey),
+	})
+	globalContext = appController.SaveIntoContext(shutdown.NewContext())
+
+	if err = s.Run(globalContext); err != nil {
 		t.Fatal("Run error:", err)
 	}
 
@@ -151,8 +170,8 @@ func TestServer(t *testing.T) {
 	}
 	handler.Unlock()
 
-	s.Close(time.Second)
-	if err = closer.Close(time.Second); err != nil {
+	err = shutdown.Shutdown(globalContext, time.Second, nil)
+	if err != nil {
 		t.Error("Close error:", err)
 	}
 

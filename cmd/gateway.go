@@ -9,8 +9,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zhangpeihao/shutdown"
+	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/gateway"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // gatewayCmd gateway命令
@@ -27,8 +28,9 @@ var gatewayCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
 			err        error
-			gatewaySrv util.SafeCloseServer
+			gatewaySrv define.Server
 		)
+		ctx := shutdown.NewContext()
 		glog.Infoln("gateway run")
 		// 构建Gateway服务
 		gatewaySrv, err = gateway.NewServer()
@@ -37,19 +39,20 @@ var gatewayCmd = &cobra.Command{
 			return
 		}
 
-		// 构建安全退出对象
-		closer := util.NewSafeCloser()
-		if err = gatewaySrv.Run(closer); err != nil {
+		// 运行服务
+		if err = gatewaySrv.Run(ctx); err != nil {
 			glog.Errorln("gateway server run error:", err)
 			return
 		}
 
 		// 等待退出信号，并安全退出
 		closeTimeout := time.Second * time.Duration(10)
-		closer.WaitAndClose(closeTimeout,
-			func(timeout time.Duration) error {
-				return nil
-			})
+		if err = shutdown.WaitAndShutdown(ctx, closeTimeout, func(timeout time.Duration) error {
+			return gatewaySrv.Close(timeout)
+		}); err != nil {
+			glog.Errorln("shutdown error:", err)
+			return
+		}
 	},
 }
 

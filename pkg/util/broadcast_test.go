@@ -12,7 +12,7 @@ import (
 
 func TestBroadcastSignal(t *testing.T) {
 	bc := NewBroadcastSignal()
-
+	assert.True(t, bc.Empty())
 	var counter int32
 	for i := 0; i < 10; i++ {
 		go func() {
@@ -25,6 +25,7 @@ func TestBroadcastSignal(t *testing.T) {
 	}
 
 	time.Sleep(time.Second)
+	assert.False(t, bc.Empty())
 	var v int32
 	v = atomic.LoadInt32(&counter)
 	assert.Equal(t, int32(10), v)
@@ -32,5 +33,6 @@ func TestBroadcastSignal(t *testing.T) {
 	time.Sleep(time.Second * 2)
 	v = atomic.LoadInt32(&counter)
 	assert.Equal(t, int32(0), v)
+	assert.True(t, bc.Empty())
 	bc.Close()
 }

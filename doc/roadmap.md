@@ -4,6 +4,8 @@
 
 ## Token校验逻辑 (Done)
 
+## 重构SafeCloser，使用Context实现
+
 ## jsoniter支持
 
 ## 接入influxdb提供统计日志

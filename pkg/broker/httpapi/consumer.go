@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/zhangpeihao/shutdown"
 	"github.com/zhangpeihao/zim/pkg/broker"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
@@ -17,10 +18,15 @@ import (
 func (b *BrokerImpl) Subscribe(tag string, handler broker.SubscribeHandler) error {
 	glog.Infof("broker::httpapi::Subscribe(%s)\n", tag)
 	defer glog.Infof("broker::httpapi::Subscribe(%s) done\n", tag)
+	if err := shutdown.ExitWaitGroupAdd(b.ctx, 1); err != nil {
+		glog.Errorf("broker::httpapi::Subscribe(%s) ExitWaitGroupAdd error: %s", tag, err)
+		return err
+	}
+	defer shutdown.ExitWaitGroupDone(b.ctx)
 	queue := make(chan *protocol.Command, b.queueSize)
+	b.Lock()
 	b.queues[tag] = queue
-	wait := b.closeSignal.Wait()
-	defer b.closeSignal.RemoveWait(wait)
+	b.Unlock()
 FOR_LOOP:
 	for {
 		select {
@@ -29,7 +35,8 @@ FOR_LOOP:
 				util.RecoverFromPanic()
 				handler(tag, cmd)
 			}()
-		case <-wait:
+		case <-b.ctx.Done():
+			glog.Infof("broker::httpapi::Subscribe(%s) break by context", tag)
 			break FOR_LOOP
 		}
 	}
@@ -40,11 +47,7 @@ FOR_LOOP:
 func (b *BrokerImpl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	glog.Infoln("broker::httpapi::ServeHTTP()")
 	defer r.Body.Close()
-	if b.closer.IsClose() {
-		glog.Warningln("broker::httpapi::ServeHTTP() URL: ", r.URL.Path, ", Closed")
-		w.WriteHeader(500)
-		return
-	}
+
 	tag := strings.ToLower(strings.Trim(r.URL.Path, "/"))
 	glog.Infoln("broker::httpapi::ServeHTTP() tag: ", tag)
 	if tag == "debug.html" {
@@ -56,7 +59,9 @@ func (b *BrokerImpl) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		b.Lock()
 		queue, ok := b.queues[tag]
+		b.Unlock()
 		if !ok {
 			glog.Warningln("broker::httpapi::ServeHTTP() no tag(", tag, ")")
 			w.WriteHeader(404)

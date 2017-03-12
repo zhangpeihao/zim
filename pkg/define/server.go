@@ -3,20 +3,18 @@
 package define
 
 import (
+	"context"
+	"time"
+
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // Server 服务接口
 type Server interface {
-	// SafeCloseServer 安全关闭接口
-	util.SafeCloseServer
-}
-
-// SubServer 子服务接口
-type SubServer interface {
-	// SafeCloseServer 安全关闭接口
-	util.SafeCloseServer
+	// Run 运行
+	Run(context.Context) error
+	// Close 关闭
+	Close(timeout time.Duration) (err error)
 }
 
 // ServerHandler 服务回调接口

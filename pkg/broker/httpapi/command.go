@@ -3,6 +3,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/zhangpeihao/zim/pkg/context"
+	"github.com/zhangpeihao/zim/pkg/app"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
@@ -67,12 +68,12 @@ func ParseCommand(ctx context.Context, tag string, header http.Header, payload [
 		return nil, define.ErrInvalidParameter
 	}
 
-	app := ctx.GetCheckSum(cmd.AppID)
-	if app == nil {
+	a := app.GetAppFromContext(ctx, cmd.AppID)
+	if a == nil {
 		glog.Warningln("broker::httpapi::ParseCommand() no app(", cmd.AppID, ")")
 		return nil, define.ErrInvalidParameter
 	}
-	checksumExpect := app.CheckSumSHA256([]byte(tag), []byte(cmd.AppID), []byte(cmd.Name),
+	checksumExpect := a.CheckSumSHA256([]byte(tag), []byte(cmd.AppID), []byte(cmd.Name),
 		[]byte(data), []byte(payloadMD5), []byte(nonce), []byte(timestamp))
 	if checksumExpect != checksum {
 		glog.Warningf("broker::httpapi::ParseCommand() checksum error!\ngot: %s\nexpect: %s\n",
@@ -80,7 +81,7 @@ func ParseCommand(ctx context.Context, tag string, header http.Header, payload [
 		return nil, define.ErrInvalidParameter
 	}
 
-	expectPayloadMD5 := app.CheckSumMD5(cmd.Payload)
+	expectPayloadMD5 := a.CheckSumMD5(cmd.Payload)
 	gotPayloadMD5 := strings.ToUpper(payloadMD5)
 	if gotPayloadMD5 != expectPayloadMD5 {
 		glog.Warningf("broker::httpapi::ParseCommand() checksum unmatch!\ngot: %s\nexpect: %s\n",
@@ -103,13 +104,13 @@ func ComposeCommand(ctx context.Context, tag string, header http.Header,
 	cmd *protocol.Command) (err error) {
 	header.Set("User-Agent", HeaderAgent)
 
-	app := ctx.GetCheckSum(cmd.AppID)
-	if app == nil {
+	a := app.GetAppFromContext(ctx, cmd.AppID)
+	if a == nil {
 		glog.Warningln("broker::httpapi::Publish() no app(", cmd.AppID, ")")
 		return fmt.Errorf("no AppID %s", cmd.AppID)
 	}
 
-	payloadMD5 := app.CheckSumMD5(cmd.Payload)
+	payloadMD5 := a.CheckSumMD5(cmd.Payload)
 	header.Set(HeaderAppID, cmd.AppID)
 	header.Set(HeaderName, cmd.Name)
 
@@ -131,7 +132,7 @@ func ComposeCommand(ctx context.Context, tag string, header http.Header,
 	}
 
 	timestamp = fmt.Sprintf("%d", time.Now().Unix())
-	checksum = app.CheckSumSHA256([]byte(tag), []byte(cmd.AppID), []byte(cmd.Name),
+	checksum = a.CheckSumSHA256([]byte(tag), []byte(cmd.AppID), []byte(cmd.Name),
 		data, []byte(payloadMD5), []byte(nonce), []byte(timestamp))
 
 	header.Set(HeaderPayloadMD5, payloadMD5)

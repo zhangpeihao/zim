@@ -3,6 +3,7 @@
 package gateway
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/zhangpeihao/zim/pkg/broker/register"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 	"github.com/zhangpeihao/zim/pkg/websocket"
 
 	// 加载Broker
@@ -40,16 +40,16 @@ type ServerParameter struct {
 type Server struct {
 	// ServerParameter 服务参数
 	ServerParameter
-	// closer 安全退出
-	closer *util.SafeCloser
+	// ctx 环境上下文
+	ctx context.Context
 	// 锁
 	sync.Mutex
 	// wsServer WebSocket服务
-	wsServer define.SubServer
+	wsServer define.Server
 	// connections 连接Map
 	connections map[string][]define.Connection
-	// apps 应用Map
-	apps map[string]*app.App
+	// appController 应用Conttroller
+	appController *app.Controller
 	// tag 消息队列tag
 	tag string
 }
@@ -62,7 +62,6 @@ func NewServer() (srv *Server, err error) {
 			AppConfigs: viper.GetStringSlice("gateway.app-config"),
 		},
 		connections: make(map[string][]define.Connection),
-		apps:        make(map[string]*app.App),
 	}
 	tag := viper.GetString("gateway.broker-tag")
 	if len(tag) == 0 {
@@ -74,37 +73,30 @@ func NewServer() (srv *Server, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = register.Init(srv, "gateway.broker"); err != nil {
+	if err = register.Init("gateway.broker"); err != nil {
 		glog.Warningln("gateway::NewServer() register.Init() error:", err)
 		return nil, err
 	}
 	glog.Infof("srv.AppConfigs: %+v\n", srv.AppConfigs)
-	for _, config := range srv.AppConfigs {
-		appConfig, err := app.NewApp(config)
-		if err != nil {
-			return nil, err
-		}
-		srv.apps[appConfig.Name] = appConfig
+	srv.appController, err = app.NewController(srv.AppConfigs)
+	if err != nil {
+		return nil, err
 	}
 	return
 }
 
 // Run 启动WebSocket服务
-func (srv *Server) Run(closer *util.SafeCloser) (err error) {
+func (srv *Server) Run(ctx context.Context) (err error) {
 	glog.Infoln("gateway::Server::Run()")
-	srv.closer = closer
-	if err = broker.Run(closer); err != nil {
+	srv.ctx = srv.appController.SaveIntoContext(ctx)
+	if err = broker.Run(srv.ctx); err != nil {
 		glog.Errorln("gateway::Server::Run() brocker.Run() error:", err)
 		return err
 	}
-	if err = srv.wsServer.Run(closer); err != nil {
+	if err = srv.wsServer.Run(srv.ctx); err != nil {
 		glog.Errorln("gateway::Server::Run() wsServer error:", err)
 		return err
 	}
-	err = srv.closer.Add(ServerName, func(timeout time.Duration) error {
-		glog.Infoln("gateway::Server::Run() to close")
-		return srv.Close(timeout)
-	})
 	return
 }
 
@@ -112,7 +104,6 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("gateway::Server::Close()")
 	defer glog.Warningln("gateway::Server::Close() Done")
-	defer srv.closer.Done(ServerName)
 	// 关闭所有链接
 	srv.Lock()
 	var connections []define.Connection
@@ -120,6 +111,9 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 		connections = append(connections, conn...)
 	}
 	srv.Unlock()
+	glog.Infoln("gateway::Server::Close() close wsServer")
+	srv.wsServer.Close(timeout)
+	glog.Infoln("gateway::Server::Close() close all connections")
 	for _, conn := range connections {
 		conn.Close(true)
 	}
@@ -148,8 +142,8 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 		ok       bool
 		resp     *protocol.Command
 	)
-	appConfig, ok := srv.apps[command.AppID]
-	if !ok {
+	a := app.GetAppFromContext(srv.ctx, command.AppID)
+	if a == nil {
 		glog.Warningln("gateway::Server::OnReceivedCommand() No application found",
 			command.AppID)
 		conn.Close(false)
@@ -157,7 +151,7 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 	}
 
 	// Route
-	broker := appConfig.Router.Find(command.Name)
+	broker := a.Router.Find(command.Name)
 	if broker == nil {
 		glog.Warningf("gateway::Server::OnReceivedCommand() no route to %s\n", command.Name)
 		return define.ErrAuthFailed
@@ -178,14 +172,14 @@ func (srv *Server) OnReceivedCommand(conn define.Connection, command *protocol.C
 				command.Name, err)
 			return define.ErrNeedAuth
 		}
-		if strings.ToLower(appConfig.TokenCheck) == "yes" {
+		if strings.ToLower(a.TokenCheck) == "yes" {
 			now := time.Now().Unix()
 			if loginCmd.Timestamp+LoginTimeout < now {
 				glog.Warningf("gateway::Server::OnReceivedCommand() login timeout! loginCmd.Timestamp: %d, LoginTimeout: %d, now: %d\n",
 					loginCmd.Timestamp, LoginTimeout, now)
 				return define.ErrNeedAuth
 			}
-			token := loginCmd.CalToken(appConfig.KeyBytes)
+			token := loginCmd.CalToken(a.KeyBytes)
 			if token != strings.ToUpper(loginCmd.Token) {
 				glog.Warningf("gateway::Server::OnReceivedCommand() token unmatch! loginCmd.Token: %s, token: %s\n",
 					loginCmd.Token, token)
@@ -285,12 +279,4 @@ func (srv *Server) OnPushToUser(cmd *protocol.Command) {
 		}
 	}
 	srv.Unlock()
-}
-
-// GetCheckSum Context接口
-func (srv *Server) GetCheckSum(appid string) app.CheckSum {
-	if appConfig, ok := srv.apps[appid]; ok {
-		return appConfig
-	}
-	return nil
 }

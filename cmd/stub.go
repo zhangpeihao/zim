@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,10 +15,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+	"github.com/zhangpeihao/shutdown"
 	"github.com/zhangpeihao/zim/pkg/app"
 	"github.com/zhangpeihao/zim/pkg/broker/httpapi"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 const (
@@ -25,21 +26,9 @@ const (
 	Tag = "gateway"
 )
 
-// CheckSumHandler CheckSum句柄类
-type CheckSumHandler struct {
-}
-
 var (
-	handler = &CheckSumHandler{}
+	globalContext context.Context
 )
-
-// GetCheckSum 接口函数
-func (handler *CheckSumHandler) GetCheckSum(name string) app.CheckSum {
-	return &app.App{
-		Key:      cfgKey,
-		KeyBytes: []byte(cfgKey),
-	}
-}
 
 // stubCmd represents the stub command
 var stubCmd = &cobra.Command{
@@ -49,6 +38,17 @@ var stubCmd = &cobra.Command{
 
 提供桩服务，接收Gateway消息，并回消息`,
 	Run: func(cmd *cobra.Command, args []string) {
+		appController, err := app.NewController(nil)
+		if err != nil {
+			log.Fatal("new app controller error:", err)
+			return
+		}
+		appController.AddApp(&app.App{
+			ID:       "stub",
+			Key:      cfgKey,
+			KeyBytes: []byte(cfgKey),
+		})
+		globalContext = appController.SaveIntoContext(shutdown.NewContext())
 		http.HandleFunc("/"+Tag, HandleHTTP)
 		listener, err := net.Listen("tcp", cfgStubBindAddress)
 		if err != nil {
@@ -64,8 +64,7 @@ var stubCmd = &cobra.Command{
 				}
 			}
 		}()
-		terminationSignalsCh := make(chan os.Signal, 1)
-		util.WaitAndClose(terminationSignalsCh, time.Second*time.Duration(3), func(timeout time.Duration) error {
+		shutdown.WaitAndShutdown(globalContext, time.Second*time.Duration(3), func(timeout time.Duration) error {
 			SetExitFlag()
 			return nil
 		})
@@ -98,7 +97,7 @@ func HandleHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
 		return
 	}
-	if cmd, err = httpapi.ParseCommand(handler, Tag, r.Header, payload, 10); err != nil {
+	if cmd, err = httpapi.ParseCommand(globalContext, Tag, r.Header, payload, 10); err != nil {
 		glog.Warningf("HandleLogin() ParseCommand error: %s\n",
 			err)
 		w.WriteHeader(400)
@@ -153,7 +152,7 @@ func HandleHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Reponse 发响应
 func Reponse(w http.ResponseWriter, cmd *protocol.Command) {
-	err := httpapi.ComposeCommand(handler, Tag, w.Header(), cmd)
+	err := httpapi.ComposeCommand(globalContext, Tag, w.Header(), cmd)
 	if err != nil {
 		glog.Errorf("Reponse() ComposeCommand error: %s\n", err)
 		w.WriteHeader(400)

@@ -78,3 +78,10 @@ func (b *BroadcastSignal) Close() {
 	b.Unlock()
 	//	time.Sleep(time.Second)
 }
+
+// Empty 是否为空
+func (b *BroadcastSignal) Empty() bool {
+	b.Lock()
+	defer b.Unlock()
+	return len(b.signals) == 0
+}

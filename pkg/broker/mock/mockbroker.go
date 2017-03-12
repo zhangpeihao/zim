@@ -4,15 +4,14 @@
 package mock
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/zhangpeihao/zim/pkg/broker"
 	"github.com/zhangpeihao/zim/pkg/broker/register"
-	"github.com/zhangpeihao/zim/pkg/context"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // BrokerImpl Mock broker实现
@@ -31,7 +30,7 @@ func init() {
 }
 
 // NewMockBroker 新建Mock broker
-func NewMockBroker(ctx context.Context, viperPerfix string) (broker.Broker, error) {
+func NewMockBroker(viperPerfix string) (broker.Broker, error) {
 	return &BrokerImpl{}, nil
 }
 
@@ -67,7 +66,7 @@ func (b *BrokerImpl) Subscribe(tag string, handler broker.SubscribeHandler) erro
 }
 
 // Run 运行
-func (b *BrokerImpl) Run(closer *util.SafeCloser) error {
+func (b *BrokerImpl) Run(ctx context.Context) error {
 	return nil
 }
 

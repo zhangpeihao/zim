@@ -4,16 +4,17 @@
 package broker
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // Broker 异步消息接口
 type Broker interface {
-	util.SafeCloseServer
+	define.Server
 	// Publish 发布消息到消息队列
 	Publish(tag string, cmd *protocol.Command) (*protocol.Command, error)
 	// Subscribe 从消息队列订阅消息
@@ -43,11 +44,11 @@ func Get(name string) Broker {
 }
 
 // Run 运行
-func Run(closer *util.SafeCloser) (err error) {
+func Run(ctx context.Context) (err error) {
 	glog.Infoln("broker::define::Run()")
 	defer glog.Infoln("broker::define::Run() done")
 	for _, broker := range brokers {
-		if err = broker.Run(closer); err != nil {
+		if err = broker.Run(ctx); err != nil {
 			glog.Errorln("broker::Run() error:", err)
 			break
 		}
@@ -56,11 +57,13 @@ func Run(closer *util.SafeCloser) (err error) {
 }
 
 // Close 关闭
-func Close(timeout time.Duration) (err error) {
-	glog.Warningln("broker::define::Close()")
-	defer glog.Warningln("broker::define::Close() done")
+func Close(timeout time.Duration) error {
+	var err error
 	for _, broker := range brokers {
-		go broker.Close(timeout)
+		closeErr := broker.Close(timeout)
+		if err == nil {
+			err = closeErr
+		}
 	}
-	return nil
+	return err
 }

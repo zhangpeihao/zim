@@ -3,6 +3,7 @@
 package websocket
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/websocket"
 	"github.com/spf13/viper"
+	"github.com/zhangpeihao/shutdown"
 	"github.com/zhangpeihao/zim/pkg/define"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/util"
@@ -42,8 +44,8 @@ type Server struct {
 	WSParameter
 	// serverHandler Server回调
 	serverHandler define.ServerHandler
-	// closer 安全退出锁
-	closer *util.SafeCloser
+	// context 环境上下文
+	ctx context.Context
 	// upgrader upgrader WebSocket upgrade参数
 	upgrader *websocket.Upgrader
 	// httpListenerlistener HTTP侦听对象
@@ -86,9 +88,9 @@ func NewServer(serverHandler define.ServerHandler) (srv *Server, err error) {
 }
 
 // Run 启动WebSocket服务
-func (srv *Server) Run(closer *util.SafeCloser) (err error) {
+func (srv *Server) Run(ctx context.Context) (err error) {
 	glog.Infoln("websocket::Server::Run()")
-	srv.closer = closer
+	srv.ctx = ctx
 	srv.httpListener, err = net.Listen("tcp4", srv.WSBindAddress)
 	if err != nil {
 		glog.Errorf("websocket::Server::Run() listen(%s) error: %s\n",
@@ -126,10 +128,6 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 			srv.WSSBindAddress, httpsErr)
 		return httpsErr
 	}
-	err = srv.closer.Add(ServerName, func(timeout time.Duration) error {
-		glog.Warningln("websocket::Server::Run() to close")
-		return srv.Close(timeout)
-	})
 
 	return err
 }
@@ -138,7 +136,6 @@ func (srv *Server) Run(closer *util.SafeCloser) (err error) {
 func (srv *Server) Close(timeout time.Duration) (err error) {
 	glog.Infoln("websocket::Server::Close()")
 	defer glog.Warningln("websocket::Server::Close() Done")
-	defer srv.closer.Done(ServerName)
 	// 关闭HTTP服务
 	if srv.httpListener != nil {
 		err = srv.httpListener.Close()
@@ -149,10 +146,6 @@ func (srv *Server) Close(timeout time.Duration) (err error) {
 // Handle 处理HTTP链接
 func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	glog.Infoln("websocket::Server::ServeHTTP()")
-	if srv.closer.IsClose() {
-		glog.Warningln("websocket::Server::ServeHTTP() URL: ", r.URL.Path, ", Closed")
-		return
-	}
 	route := strings.ToLower(strings.Trim(r.URL.Path, "/"))
 	glog.Infoln("websocket::Server::ServeHTTP() route: ", route)
 	switch route {
@@ -182,6 +175,11 @@ func (srv *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		glog.Errorf("websocket::Server::Handle() upgrade error: %s\n", err)
 		return
 	}
+	if err := shutdown.ExitWaitGroupAdd(srv.ctx, 1); err != nil {
+		glog.Errorf("websocket::Server::HandleWebSocket() ExitWaitGroupAdd error: %s", err)
+		return
+	}
+	defer shutdown.ExitWaitGroupDone(srv.ctx)
 
 	// 新建连接
 	conn := NewConnection(c)
@@ -189,12 +187,12 @@ func (srv *Server) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	var cmd *protocol.Command
 FOR_LOOP:
-	for !srv.closer.IsClose() {
+	for {
 		// 读取Command
 		cmd, err = conn.ReadCommand()
 		if err != nil {
 			if err == define.ErrNoMoreMessage {
-				continue
+				continue FOR_LOOP
 			}
 			if err == define.ErrConnectionClosed {
 				glog.Infoln("websocket::Server::Handle() connection to close")
@@ -216,10 +214,6 @@ FOR_LOOP:
 // HandleDebug 处理HTTP链接
 func (srv *Server) HandleDebug(w http.ResponseWriter, r *http.Request) {
 	glog.Infoln("websocket::Server::HandleDebug()")
-	if srv.closer.IsClose() {
-		w.WriteHeader(500)
-		return
-	}
 	if r.TLS == nil {
 		homeTemplate.Execute(w, "ws://"+r.Host+"/ws")
 	} else {
@@ -251,6 +245,7 @@ var homeTemplate = template.Must(template.New("").Parse(`
         </form>
     </div>
     <script type="text/javascript" src="//zimcloud.github.io/static/vendor/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="//zimcloud.github.io/static/vendor/blueimp/md5.min.js"></script>
     <script type="text/javascript" src="//zimcloud.github.io/static/js/zim.js"></script>
     <script type="text/javascript" src="//zimcloud.github.io/static/js/demo.js"></script>
 </body>

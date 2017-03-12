@@ -3,29 +3,28 @@
 package httpapi
 
 import (
+	"context"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
 	"github.com/zhangpeihao/zim/pkg/broker"
 	"github.com/zhangpeihao/zim/pkg/broker/register"
-	"github.com/zhangpeihao/zim/pkg/context"
 	"github.com/zhangpeihao/zim/pkg/protocol"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 // BrokerImpl HTTP API实现的Broker
 type BrokerImpl struct {
+	sync.Mutex
 	// RequestURL 请求地址
 	RequestURL string
 	// BindAddress 绑定地址
 	BindAddress string
 	// Debug 调试模式
 	Debug bool
-	// closer 安全退出锁
-	closer *util.SafeCloser
 	// listener HTTP侦听对象
 	listener net.Listener
 	// httpServer HTTP服务
@@ -36,8 +35,6 @@ type BrokerImpl struct {
 	queueSize int
 	// ctx 上下文接口
 	ctx context.Context
-	// closeSignal 关闭信号
-	closeSignal *util.BroadcastSignal
 	// timeout 消息超时时间（单位：秒）
 	timeout int
 }
@@ -80,7 +77,7 @@ func init() {
 }
 
 // NewHTTPAPIBroker 新建服务
-func NewHTTPAPIBroker(ctx context.Context, viperPerfix string) (broker.Broker, error) {
+func NewHTTPAPIBroker(viperPerfix string) (broker.Broker, error) {
 	glog.Infoln("push::broker::NewHTTPAPIBroker")
 	queueSize := viper.GetInt(viperPerfix + ".httpapi.queue-size")
 	if queueSize < MinQueueSize {
@@ -96,8 +93,6 @@ func NewHTTPAPIBroker(ctx context.Context, viperPerfix string) (broker.Broker, e
 		Debug:       viper.GetBool("debug"),
 		queues:      make(map[string]chan *protocol.Command),
 		queueSize:   queueSize,
-		ctx:         ctx,
-		closeSignal: util.NewBroadcastSignal(),
 		timeout:     timeout,
 	}
 	if len(b.BindAddress) == 0 {
@@ -115,9 +110,9 @@ func NewHTTPAPIBroker(ctx context.Context, viperPerfix string) (broker.Broker, e
 }
 
 // Run 运行
-func (b *BrokerImpl) Run(closer *util.SafeCloser) (err error) {
+func (b *BrokerImpl) Run(ctx context.Context) (err error) {
 	glog.Infof("broker::httpapi::Run()\n")
-	b.closer = closer
+	b.ctx = ctx
 	b.listener, err = net.Listen("tcp4", b.BindAddress)
 	if err != nil {
 		glog.Errorf("broker::httpapi::Run() listen(%s) error: %s\n",
@@ -134,11 +129,6 @@ func (b *BrokerImpl) Run(closer *util.SafeCloser) (err error) {
 			b.BindAddress, err)
 		return httpErr
 	}
-	err = b.closer.Add(ServerName, func(timeout time.Duration) error {
-		glog.Warningln("broker::httpapi::Run() to close")
-		go b.Close(timeout)
-		return nil
-	})
 
 	return err
 }
@@ -147,14 +137,11 @@ func (b *BrokerImpl) Run(closer *util.SafeCloser) (err error) {
 func (b *BrokerImpl) Close(timeout time.Duration) (err error) {
 	glog.Warningln("broker::httpapi::Close()")
 	defer glog.Warningln("broker::httpapi::Close() Done")
-	defer b.closer.Done(ServerName)
-	go b.closeSignal.Broadcast()
+
 	// 关闭HTTP服务
 	if b.listener != nil {
 		err = b.listener.Close()
 	}
-	time.Sleep(time.Second)
-	b.closeSignal.Close()
 	return err
 }
 

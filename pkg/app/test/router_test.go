@@ -14,7 +14,7 @@ import (
 func TestRouter(t *testing.T) {
 	var err error
 	// 初始化broker
-	if err = register.Init(nil, "test"); err != nil {
+	if err = register.Init("test"); err != nil {
 		t.Fatal("register.Init() error:", err)
 	}
 

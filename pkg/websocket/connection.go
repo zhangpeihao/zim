@@ -82,13 +82,7 @@ func (conn *Connection) ReadCommand() (cmd *protocol.Command, err error) {
 			err = define.ErrUnsupportProtocol
 			return nil, err
 		}
-		switch message[0] {
-		case 't':
-		default:
-			glog.Warningf("websocket::connection::ReadCommand() message type[%s] unsupport\n", string(message[0]))
-			err = define.ErrUnsupportProtocol
-			return nil, err
-		}
+
 		cmd, err = serialize.Parse(message)
 		if err != nil {
 			glog.Warningf("websocket::connection::ReadCommand() serialize.Parse error: %s\n", err)

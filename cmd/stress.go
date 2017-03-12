@@ -18,9 +18,9 @@ import (
 	"github.com/gorilla/websocket"
 	client "github.com/influxdata/influxdb/client/v2"
 	"github.com/spf13/cobra"
+	"github.com/zhangpeihao/shutdown"
 	"github.com/zhangpeihao/zim/pkg/protocol"
 	"github.com/zhangpeihao/zim/pkg/protocol/serialize"
-	"github.com/zhangpeihao/zim/pkg/util"
 )
 
 func init() {
@@ -78,8 +78,7 @@ var stressCmd = &cobra.Command{
 			go stressLoop(i + cfgBase)
 		}
 
-		terminationSignalsCh := make(chan os.Signal, 1)
-		util.WaitAndClose(terminationSignalsCh, time.Second*time.Duration(3), func(timeout time.Duration) error {
+		shutdown.WaitTerminationSignal(time.Second*time.Duration(3), func(timeout time.Duration) error {
 			SetExitFlag()
 			return nil
 		})

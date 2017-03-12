@@ -15,7 +15,7 @@ import (
 
 // App 应用数据
 type App struct {
-	Name       string  `json:"name"`
+	ID         string  `json:"id"`
 	Key        string  `json:"key"`
 	KeyBytes   []byte  `json:"-"`
 	RouteMap   InfoMap `json:"router"`
@@ -28,12 +28,6 @@ type CheckSum interface {
 	CheckSumSHA1(fields ...[]byte) string
 	CheckSumSHA256(fields ...[]byte) string
 	CheckSumMD5(fields ...[]byte) string
-}
-
-// Service App服务
-type Service interface {
-	// GetCheckSum 根据应用标志获取CheckSum接口
-	GetCheckSum(name string) CheckSum
 }
 
 // NewApp 新建App
