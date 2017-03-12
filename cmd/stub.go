@@ -44,7 +44,7 @@ var stubCmd = &cobra.Command{
 			return
 		}
 		appController.AddApp(&app.App{
-			ID:       "stub",
+			ID:       "test",
 			Key:      cfgKey,
 			KeyBytes: []byte(cfgKey),
 		})
